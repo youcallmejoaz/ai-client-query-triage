@@ -4,7 +4,6 @@ version = "0.1.0"
 description = "Triage a shared client inbox with Claude: classify, look up context, and save cited draft replies for a person to send."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
 dependencies = [
   "anthropic>=1.8,<2",
   "apscheduler>=3.11,<4",

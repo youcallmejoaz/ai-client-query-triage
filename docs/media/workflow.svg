@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" width="1200" height="560" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" role="img" aria-labelledby="title desc">
+  <title id="title">How the triage assistant works</title>
+  <desc id="desc">New email flows through a privacy gate, classification with Claude, context lookup, a cited draft saved in the mailbox, routing and alerts. A person reviews and sends. A daily summary reports open and overdue queries.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 10 5 0 10z" fill="#8a94a3"/>
+    </marker>
+    <style>
+      .card { fill: #ffffff; stroke: #d5dbe3; stroke-width: 1.5; }
+      .ai { fill: #e8f5f2; stroke: #0e7a6d; }
+      .human { fill: #eef3fd; stroke: #1d5fc2; }
+      .gate { fill: #f1eefb; stroke: #6d4bc3; }
+      .num { font-size: 12px; font-weight: 700; fill: #667180; letter-spacing: .06em; }
+      .h { font-size: 17px; font-weight: 650; fill: #16191d; }
+      .t { font-size: 12.5px; fill: #3b434d; }
+      .small { font-size: 12px; fill: #667180; }
+      .edge { stroke: #8a94a3; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .dash { stroke-dasharray: 6 5; }
+      .pill { font-size: 11.5px; font-weight: 700; }
+    </style>
+  </defs>
+  <rect width="1200" height="560" rx="18" fill="#f5f6f8"/>
+  <text x="40" y="46" font-size="22" font-weight="700" fill="#16191d">From a new client email to a reviewed reply</text>
+  <text x="40" y="70" class="small">Shared inbox in Gmail or Microsoft 365 · Claude for classification and drafting · nothing is ever sent automatically</text>
+
+  <!-- Row 1 -->
+  <rect x="40" y="100" width="250" height="150" rx="14" class="card"/>
+  <text x="60" y="128" class="num">1 · MAILBOX</text>
+  <text x="60" y="154" class="h">New email arrives</text>
+  <text x="60" y="180" class="t">Polled every 2 minutes or by</text>
+  <text x="60" y="198" class="t">an n8n trigger. Auto-replies and</text>
+  <text x="60" y="216" class="t">bulk mail skip the AI.</text>
+
+  <rect x="330" y="100" width="250" height="150" rx="14" class="card gate"/>
+  <text x="350" y="128" class="num" fill="#6d4bc3">2 · PRIVACY GATE</text>
+  <text x="350" y="154" class="h">Confidential client?</text>
+  <text x="350" y="180" class="t">Excluded clients, domains or</text>
+  <text x="350" y="198" class="t">"[Confidential]" subjects skip</text>
+  <text x="350" y="216" class="t">the model: label and route only.</text>
+
+  <rect x="620" y="100" width="250" height="150" rx="14" class="card ai"/>
+  <text x="640" y="128" class="num" fill="#0e7a6d">3 · CLAUDE</text>
+  <text x="640" y="154" class="h">Classify and tag</text>
+  <text x="640" y="180" class="t">Category, urgency and why,</text>
+  <text x="640" y="198" class="t">sentiment, escalation flags and</text>
+  <text x="640" y="216" class="t">KB searches, as structured output.</text>
+
+  <rect x="910" y="100" width="250" height="150" rx="14" class="card"/>
+  <text x="930" y="128" class="num">4 · CONTEXT</text>
+  <text x="930" y="154" class="h">Look up the client</text>
+  <text x="930" y="180" class="t">Client record (tier, plan, owner),</text>
+  <text x="930" y="198" class="t">recent queries, and knowledge-</text>
+  <text x="930" y="216" class="t">base sections (SQLite FTS5).</text>
+
+  <!-- Row 2 -->
+  <rect x="910" y="300" width="250" height="150" rx="14" class="card ai"/>
+  <text x="930" y="328" class="num" fill="#0e7a6d">5 · CLAUDE</text>
+  <text x="930" y="354" class="h">Draft a cited reply</text>
+  <text x="930" y="380" class="t">Uses only facts from the sources.</text>
+  <text x="930" y="398" class="t">Gaps go on a checklist to review.</text>
+  <text x="930" y="416" class="t">Unknown citations are dropped.</text>
+
+  <rect x="620" y="300" width="250" height="150" rx="14" class="card"/>
+  <text x="640" y="328" class="num">6 · MAILBOX</text>
+  <text x="640" y="354" class="h">Save draft + labels</text>
+  <text x="640" y="380" class="t">Reply draft in the same thread,</text>
+  <text x="640" y="398" class="t">labels for urgency, category,</text>
+  <text x="640" y="416" class="t">client and owner. Never sent.</text>
+
+  <rect x="330" y="300" width="250" height="150" rx="14" class="card"/>
+  <text x="350" y="328" class="num">7 · ROUTING</text>
+  <text x="350" y="354" class="h">Assign and alert</text>
+  <text x="350" y="380" class="t">Rules pick the owner and the</text>
+  <text x="350" y="398" class="t">reply-by time. Urgent or complex</text>
+  <text x="350" y="416" class="t">queries alert Slack or Teams.</text>
+
+  <rect x="40" y="300" width="250" height="150" rx="14" class="card human"/>
+  <text x="60" y="328" class="num" fill="#1d5fc2">8 · YOUR TEAM</text>
+  <text x="60" y="354" class="h">Review, edit, send</text>
+  <text x="60" y="380" class="t">From Gmail or Outlook. The next</text>
+  <text x="60" y="398" class="t">poll sees the reply and closes</text>
+  <text x="60" y="416" class="t">the query in the dashboard.</text>
+
+  <!-- Edges -->
+  <path d="M290 175H326" class="edge"/>
+  <path d="M580 175H616" class="edge"/>
+  <path d="M870 175H906" class="edge"/>
+  <path d="M1035 250V296" class="edge"/>
+  <path d="M910 375H874" class="edge"/>
+  <path d="M620 375H584" class="edge"/>
+  <path d="M330 375H294" class="edge"/>
+  <!-- Excluded path skips the AI -->
+  <path d="M455 250V296" class="edge dash"/>
+  <text x="466" y="278" class="small">confidential: straight to routing</text>
+
+  <!-- Daily summary band -->
+  <rect x="40" y="480" width="1120" height="52" rx="12" fill="#ffffff" stroke="#d5dbe3" stroke-width="1.5"/>
+  <circle cx="68" cy="506" r="6" fill="#c4281c"/>
+  <text x="86" y="511" class="t"><tspan font-weight="650" fill="#16191d">Every weekday at 08:45</tspan> · Daily summary of open and overdue queries by person and category, posted to Slack or Teams and shown in the dashboard.</text>
+</svg>

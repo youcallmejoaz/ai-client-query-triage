@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 
 from .config import get_settings
@@ -114,7 +115,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     serve = sub.add_parser("serve", help="Run the dashboard and API")
     serve.add_argument("--host", default="127.0.0.1")
-    serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8000")))
     serve.set_defaults(func=cmd_serve)
     sub.add_parser("poll", help="Triage new mail once").set_defaults(func=cmd_poll)
     sub.add_parser("sync", help="Close queries that were answered in the mailbox").set_defaults(func=cmd_sync)

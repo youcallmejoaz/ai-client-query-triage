@@ -187,6 +187,11 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
         services = build_services(settings)
     svc = services
     templates = build_templates(settings)
+    if isinstance(svc.mail, DemoMailbox):
+        with svc.db.session() as conn:
+            empty = conn.execute("SELECT COUNT(*) FROM demo_messages").fetchone()[0] == 0
+        if empty:  # a fresh demo deploy starts with the sample inbox waiting to be triaged
+            svc.mail.seed(settings.demo_emails_file, now=svc.clock())
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
