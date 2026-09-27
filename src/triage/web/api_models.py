@@ -45,6 +45,12 @@ def _many(value: list[AddressLike] | str | None) -> list[EmailAddress]:
     return [a for a in (_one(v) for v in value) if a is not None]
 
 
+def _header_value(name: str, value: str) -> str:
+    """n8n's Gmail trigger gives whole header lines ("Auto-Submitted: auto-replied"); keep just the value."""
+    prefix = f"{name}:"
+    return value[len(prefix) :].strip() if value.lower().startswith(prefix.lower()) else value
+
+
 class ThreadItem(BaseModel):
     sender: str
     sent_at: datetime
@@ -92,7 +98,7 @@ class TriageRequest(BaseModel):
             message_id_header=self.message_id_header,
             references=refs,
             attachments=self.attachments,
-            headers={k.lower(): v for k, v in self.headers.items()},
+            headers={k.lower(): _header_value(k, v) for k, v in self.headers.items()},
             thread_context=[
                 ThreadMessage(sender=t.sender, sent_at=t.sent_at, body_text=t.text, outbound=t.outbound)
                 for t in self.thread[-2:]
@@ -112,6 +118,8 @@ class DraftOut(BaseModel):
 
 class TriageResponse(BaseModel):
     query_id: int
+    message_id: str
+    thread_id: str
     status: str
     labels: list[str]
     category: str | None = None
@@ -164,6 +172,8 @@ def triage_response(outcome: TriageOutcome, email: InboundEmail, settings: Setti
             alert_text = f"Email from {who} needs a person ({outcome.error}). {dashboard}"
     return TriageResponse(
         query_id=outcome.query_id,
+        message_id=email.provider_id,
+        thread_id=email.thread_id,
         status=outcome.status,
         labels=outcome.labels,
         category=c.category if c else None,

@@ -52,15 +52,29 @@ def test_gmail_scope_and_graph_permission_are_documented() -> None:
     assert "Mail.ReadWrite" in setup and "Do not grant `Mail.Send`" in setup
 
 
-N8N_SEND_OPERATIONS = {"send", "reply", "sendAndWait", "forward"}
+# n8n's Gmail and Outlook "message" nodes default to operation "send", so every mail node must name a safe
+# operation explicitly. Outlook's "reply" sends unless an option says otherwise, so it is not allowed either.
+SAFE_MAIL_OPERATIONS = {"addLabels", "removeLabels", "get", "getAll", "create", "update", "markAsRead"}
+WORKFLOWS = sorted((ROOT / "n8n").glob("*.json"))
 
 
-@pytest.mark.parametrize("path", sorted((ROOT / "n8n").glob("*.json")), ids=lambda p: p.name)
+def test_n8n_workflows_exist() -> None:
+    assert len(WORKFLOWS) >= 3
+
+
+@pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: p.name)
 def test_n8n_workflows_contain_no_send_steps(path: Path) -> None:
     workflow = json.loads(path.read_text(encoding="utf-8"))
+    names = {node["name"] for node in workflow["nodes"]}
     for node in workflow["nodes"]:
-        node_type = node["type"].lower()
-        if "gmail" in node_type or "outlook" in node_type:
-            operation = node.get("parameters", {}).get("operation")
-            assert operation not in N8N_SEND_OPERATIONS, f"{path.name}: {node['name']} uses {operation}"
-            assert node.get("parameters", {}).get("resource") != "message" or operation != "send"
+        node_type = node["type"]
+        params = node.get("parameters", {})
+        if node_type in ("n8n-nodes-base.gmail", "n8n-nodes-base.microsoftOutlook"):
+            assert params.get("operation") in SAFE_MAIL_OPERATIONS, f"{path.name}: {node['name']}"
+        if node_type == "n8n-nodes-base.httpRequest":
+            url = str(params.get("url", "")).lower()
+            assert not any(s in url for s in ("/send", "sendmail", "/reply")), f"{path.name}: {node['name']}"
+    for source in workflow["connections"]:
+        assert source in names
+        for outputs in workflow["connections"][source]["main"]:
+            assert all(link["node"] in names for link in outputs)

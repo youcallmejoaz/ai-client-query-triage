@@ -1,0 +1,334 @@
+{
+  "name": "Inbox triage (Outlook) - drafts only",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Inbox triage (Outlook / Microsoft 365)\nNew mail goes to the triage service. This workflow then sets **Outlook categories**, creates a **reply draft** in the conversation (Graph `createReply`, then the draft body is filled in) and **posts to Teams** for urgent or complex queries.\n\n**Nothing is ever sent.** The credential only needs `Mail.ReadWrite`. For a shared mailbox, change `/me/` in the Graph URLs to `/users/support@yourcompany.com/`.",
+        "height": 280,
+        "width": 540,
+        "color": 5
+      },
+      "id": "b593d1e3-2183-5861-b651-b9ae1e2e940a",
+      "name": "About this workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "output": "raw",
+        "filters": {},
+        "options": {}
+      },
+      "id": "bc9fa4f2-26e8-55d1-8e00-b9f9cf0edf1a",
+      "name": "New email in shared mailbox",
+      "type": "n8n-nodes-base.microsoftOutlookTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        100
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Microsoft Outlook (shared mailbox)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://triage:8000/api/triage",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  provider: 'outlook',\n  message_id: $json.id,\n  thread_id: $json.conversationId,\n  from: `${$json.from?.emailAddress?.name ?? ''} <${$json.from?.emailAddress?.address}>`,\n  to: ($json.toRecipients ?? []).map((r) => ({ email: r.emailAddress.address, name: r.emailAddress.name })),\n  cc: ($json.ccRecipients ?? []).map((r) => ({ email: r.emailAddress.address, name: r.emailAddress.name })),\n  subject: $json.subject ?? '',\n  text: $json.body?.contentType === 'text' ? $json.body.content : null,\n  html: $json.body?.contentType === 'html' ? $json.body.content : null,\n  received_at: $json.receivedDateTime,\n  message_id_header: $json.internetMessageId ?? null\n}) }}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "3863c8df-360f-5265-925c-20edc9ec928f",
+      "name": "Triage with Claude",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        100
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "Triage API key (X-API-Key)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://graph.microsoft.com/v1.0/me/messages/{{ $json.message_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOutlookOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ categories: $json.labels }) }}",
+        "options": {}
+      },
+      "id": "6c211b35-2d66-5955-a4a5-7e617484388f",
+      "name": "Set categories",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        -80
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Microsoft Outlook (shared mailbox)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "19b5a9f6-86c3-56ee-9f24-ce178138c7ce",
+              "leftValue": "={{ $json.draft }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3b9b0d9a-d91d-5cae-a800-2fe1b9d7919d",
+      "name": "Draft written?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        520,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.microsoft.com/v1.0/me/messages/{{ $json.message_id }}/createReply",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOutlookOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {}
+      },
+      "id": "d67e7eb9-3f53-5c95-8abf-1dcb437c67ac",
+      "name": "Create reply draft",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        100
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Microsoft Outlook (shared mailbox)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://graph.microsoft.com/v1.0/me/messages/{{ $json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOutlookOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ body: { contentType: 'HTML', content: $('Triage with Claude').item.json.draft.body_html + $json.body.content } }) }}",
+        "options": {}
+      },
+      "id": "000f7800-f40e-5e09-af91-02ee27825ae7",
+      "name": "Write the draft body",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        100
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Microsoft Outlook (shared mailbox)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "31e581c3-5a5b-5ced-a421-b29184bc46fe",
+              "leftValue": "={{ $json.alert }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "48c48a02-e7ac-5cc5-8cca-c1d7a422ea3f",
+      "name": "Urgent or complex?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        520,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "channelMessage",
+        "operation": "create",
+        "teamId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "channelId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "contentType": "text",
+        "message": "={{ $json.alert_text }}",
+        "options": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "2300e03b-4bc1-5ccd-9fe5-f5818e8cbec2",
+      "name": "Alert the team in Teams",
+      "type": "n8n-nodes-base.microsoftTeams",
+      "typeVersion": 2,
+      "position": [
+        760,
+        280
+      ],
+      "credentials": {
+        "microsoftTeamsOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Microsoft Teams"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "New email in shared mailbox": {
+      "main": [
+        [
+          {
+            "node": "Triage with Claude",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Triage with Claude": {
+      "main": [
+        [
+          {
+            "node": "Set categories",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Draft written?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Urgent or complex?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft written?": {
+      "main": [
+        [
+          {
+            "node": "Create reply draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create reply draft": {
+      "main": [
+        [
+          {
+            "node": "Write the draft body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Urgent or complex?": {
+      "main": [
+        [
+          {
+            "node": "Alert the team in Teams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

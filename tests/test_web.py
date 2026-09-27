@@ -90,6 +90,7 @@ def test_api_triage_for_n8n(client: TestClient) -> None:
     assert draft["subject"] == "Re: Invoice question" and draft["in_reply_to"] == "<abc@mail.gmail.com>"
     assert draft["body_text"].endswith("Tidewater Payroll Client Support")
     assert body["dashboard_url"].endswith(f"/queries/{body['query_id']}")
+    assert body["message_id"] == "18c2f" and body["thread_id"] == "18c2f"
     # Same message again: stored once.
     again = client.post("/api/triage", json=payload).json()
     assert again["query_id"] == body["query_id"]
@@ -136,3 +137,17 @@ def test_production_refuses_to_run_without_a_login(env: Env) -> None:
     assert client.get("/api/health").status_code == 200
     weak = prod.model_copy(update={"basic_auth_user": "a", "basic_auth_password": "short"})
     assert TestClient(create_app(weak, env.svc)).get("/").status_code == 503
+
+
+def test_api_triage_accepts_n8n_header_lines(client: TestClient) -> None:
+    body = client.post(
+        "/api/triage",
+        json={
+            "message_id": "ooo1",
+            "from": "Finance <finance@evergreenvet.example>",
+            "subject": "Automatic reply: invoice",
+            "text": "I am out of the office.",
+            "headers": {"auto-submitted": "Auto-Submitted: auto-replied"},
+        },
+    ).json()
+    assert body["status"] == "no_reply_needed" and body["draft"] is None

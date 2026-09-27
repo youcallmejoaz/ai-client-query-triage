@@ -1,0 +1,128 @@
+{
+  "name": "Daily summary of open and overdue queries",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Daily summary\nWeekdays at 08:45: fetches open and overdue client queries from the triage service and posts the summary to Slack. Swap the last node for Microsoft Teams if that is where the team works.",
+        "height": 170,
+        "width": 460,
+        "color": 5
+      },
+      "id": "1ecbdbec-413b-56b4-87e2-abcb3b2edc52",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "45 8 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "de770ebc-febb-5e26-9344-7168eae2c7a1",
+      "name": "Weekdays 08:45",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://triage:8000/api/digest",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "cab7d3ac-3473-5943-915d-8a46d5f11752",
+      "name": "Get the summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        60
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "Triage API key (X-API-Key)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#client-support",
+          "mode": "name"
+        },
+        "messageType": "block",
+        "blocksUi": "={{ JSON.stringify({ blocks: $json.slack.blocks }) }}",
+        "text": "={{ $json.slack.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "ec08ce0d-c273-548b-bddd-07cebd22db52",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        480,
+        60
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "REPLACE_ME",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Weekdays 08:45": {
+      "main": [
+        [
+          {
+            "node": "Get the summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get the summary": {
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
