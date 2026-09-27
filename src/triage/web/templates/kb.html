@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}{{ article.title }}{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="javascript:history.back()">{{ icon('arrow-left', 14) }} Back</a></div>
+<article class="card article">
+  <div class="card-head">
+    <div><h1>{{ article.title }}</h1><div class="hint">{{ icon('book', 13) }} Knowledge base · {{ article.id }}{% if article.updated %} · updated {{ article.updated }}{% endif %}</div></div>
+    {% if article.url %}<a class="btn small" href="{{ article.url }}" target="_blank" rel="noopener">{{ icon('external', 13) }} Help centre</a>{% endif %}
+  </div>
+  {% for c in chunks %}
+  <section id="{{ c.chunk_id.split('#')[1] }}">
+    <h2>{{ c.heading }}</h2>
+    <div class="body">{{ c.body }}</div>
+  </section>
+  {% endfor %}
+</article>
+{% endblock %}

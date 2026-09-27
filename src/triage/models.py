@@ -34,7 +34,7 @@ CATEGORY_LABELS: dict[str, str] = {
     "scheduling": "Scheduling",
     "legal_compliance": "Legal & compliance",
     "general_question": "General question",
-    "automated_or_spam": "Automated / spam",
+    "automated_or_spam": "Automated or spam",
     "other": "Other",
 }
 

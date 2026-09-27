@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, gmail_label_class %}
+{% block title %}Demo mailbox{% endblock %}
+{% block content %}
+{% set row_labels = ['AI/Urgency/', 'AI/Category/', 'AI/Client/', 'AI/Needs human', 'AI/Excluded'] %}
+<div class="page-head">
+  <div>
+    <h1>Demo mailbox</h1>
+    <p class="sub">{{ mailbox }} as Gmail would show it{{ ', after the assistant has triaged it: labels on every thread and a draft waiting where a reply is needed' if after else ', before the assistant runs: one undifferentiated pile' }}.</p>
+  </div>
+  <nav class="tabs" aria-label="Before or after">
+    <a href="/demo/inbox?state=before" class="{{ 'active' if not after }}">Before</a>
+    <a href="/demo/inbox?state=after" class="{{ 'active' if after }}">After</a>
+  </nav>
+</div>
+
+<div class="mail-app">
+  <aside class="mail-side" aria-label="Folders and labels">
+    <div class="compose">{{ icon('pencil', 16) }} Compose</div>
+    <div class="folder active"><span>{{ icon('inbox', 15) }}&nbsp; Inbox</span><b>{{ threads | rejectattr('replied') | list | length }}</b></div>
+    <div class="folder"><span>{{ icon('star', 15) }}&nbsp; Starred</span></div>
+    <div class="folder"><span>{{ icon('pencil', 15) }}&nbsp; Drafts</span>{% if after %}<b>{{ threads | selectattr('has_draft') | list | length }}</b>{% endif %}</div>
+    <div class="folder"><span>{{ icon('reply', 15) }}&nbsp; Sent</span></div>
+    {% if after %}
+    <div class="section">Labels</div>
+    {% for group, items in label_groups %}
+      <div class="lbl group">{{ icon('book', 12) }}{{ group }}</div>
+      {% for leaf, full, n in items %}
+      <div class="lbl child"><span class="sw glabel {{ gmail_label_class(full) }}"></span>{{ leaf }}<span class="cnt">{{ n }}</span></div>
+      {% endfor %}
+    {% endfor %}
+    {% endif %}
+  </aside>
+
+  <section class="mail-main">
+    {% if selected %}
+    <div class="mail-tabs"><a href="/demo/inbox?state={{ 'after' if after else 'before' }}">{{ icon('arrow-left', 14) }} Inbox</a><span class="who-sub">{{ selected.count }} message{{ 's' if selected.count != 1 }}</span></div>
+    <div class="thread">
+      <h2>{{ selected.subject }}</h2>
+      {% if after %}<div class="labels">{% for lbl in selected.labels %}<span class="glabel {{ gmail_label_class(lbl) }}">{{ lbl }}</span>{% endfor %}</div>{% endif %}
+      {% for m in selected.messages %}
+      <div class="message">
+        <div class="hd"><span><b>{{ m.from_name or m.from_email }}</b> <span class="who-sub">&lt;{{ m.from_email }}&gt;</span></span><span class="t">{{ m.received_at | local }}</span></div>
+        <div class="body">{{ m.body }}</div>
+      </div>
+      {% endfor %}
+      {% if after %}{% for d in selected.drafts %}
+      <div class="draftbox">
+        <div class="hd"><span><b>Draft</b> · to {{ d.to_email }}</span><span class="who-sub">{{ d.subject }}</span></div>
+        <div class="body">{{ d.body }}</div>
+      </div>
+      {% endfor %}{% endif %}
+    </div>
+    {% else %}
+    <div class="mail-tabs"><span class="who-sub">{{ icon('refresh', 14) }}</span><span class="who-sub">1–{{ threads | length }} of {{ threads | length }}</span></div>
+    <ul class="mail-list">
+      {% for t in threads %}
+      {% set unread = not t.replied %}
+      <li class="mail-row {{ 'unread' if unread else 'read' }}">
+        <span class="box"></span>
+        <span class="star">{{ icon('star', 15) }}</span>
+        <span class="from">{{ t.from_name }}{% if t.count > 1 %} <span class="n">{{ t.count }}</span>{% endif %}{% if after and t.has_draft %}, <span class="draft">Draft</span>{% endif %}</span>
+        <span class="line">
+          {% if after %}{% for lbl in t.labels %}{% for prefix in row_labels %}{% if lbl.startswith(prefix) %}<span class="glabel {{ gmail_label_class(lbl) }}">{{ lbl.split('/')[-1] }}</span>{% endif %}{% endfor %}{% endfor %}{% endif %}
+          <span class="subj">{{ t.subject }}</span><span class="snip">– {{ t.snippet }}</span>
+        </span>
+        <span class="time">{{ mailtime(t.last_at, now) }}</span>
+        <a class="cover" href="/demo/inbox?state={{ 'after' if after else 'before' }}&thread={{ t.thread_id }}" aria-label="Open {{ t.subject }}"></a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

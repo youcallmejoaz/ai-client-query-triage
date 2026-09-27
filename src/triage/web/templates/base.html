@@ -1,0 +1,34 @@
+{% from "_macros.html" import icon %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Queue{% endblock %} · Client Query Triage</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/app.css">
+  <script>try { var t = new URLSearchParams(location.search).get("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/"><span class="brand-mark">{{ icon('inbox', 16) }}</span><span>Client Query Triage</span></a>
+      <nav class="nav" aria-label="Main">
+        <a href="/" class="{{ 'active' if path == '/' or path.startswith('/queries') }}">Queue <span class="count">{{ open_count }}</span></a>
+        <a href="/digest" class="{{ 'active' if path == '/digest' }}">Daily summary</a>
+        <a href="/outbox" class="{{ 'active' if path == '/outbox' }}">Alerts</a>
+        {% if demo %}<a href="/demo/inbox" class="{{ 'active' if path.startswith('/demo') }}">Demo mailbox</a>{% endif %}
+      </nav>
+      <div class="mailbox-pill" title="Mailbox and model in use">
+        <span class="dot"></span>{{ settings.mailbox_address }}
+        · {{ {'demo': 'Demo mailbox', 'gmail': 'Gmail', 'graph': 'Outlook'}.get(mail_provider, mail_provider) }}
+        · {{ 'Claude' if settings.ai_provider == 'claude' else 'Scripted AI' }}
+      </div>
+    </div>
+  </header>
+  <main class="page">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer">{{ icon('send-off', 14) }} Drafts only. This assistant never sends email: your team reviews each draft and sends it from {{ 'Outlook' if mail_provider == 'graph' else 'Gmail' if mail_provider == 'gmail' else 'the mailbox' }}.</footer>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, urgency, status_badge, tier, person %}
+{% block title %}{{ q.subject or 'Confidential email' }}{% endblock %}
+{% block content %}
+{% set mailbox_name = 'Outlook' if mail_provider == 'graph' else 'Gmail' if mail_provider == 'gmail' else 'the mailbox' %}
+<div class="crumbs"><a href="/">{{ icon('arrow-left', 14) }} Queue</a></div>
+
+<header class="q-header">
+  <div class="q-badges">
+    {% if q.status != 'excluded' %}{{ urgency(q.urgency) }}{% endif %}
+    {{ status_badge(q.status) }}
+    {% if q.category %}<span class="tag">{{ category_label(q.category) }}</span>{% endif %}
+    {% if q.due.text %}<span class="due-{{ q.due.tone }}">· {{ q.due.text if q.due.tone == 'overdue' else 'Reply by ' ~ (q.due_at | local) }}</span>{% endif %}
+  </div>
+  <h1>{{ q.subject or 'Confidential email' }}</h1>
+  <p class="q-meta">
+    From <strong>{{ q.sender_name or q.sender_email }}</strong> &lt;{{ q.sender_email }}&gt;
+    {% if q.client_name %}· {{ q.client_name }}{{ tier(q.client_tier) }}{% endif %}
+    · received {{ q.received_at | local }} ({{ ago(q.received_at, now) }})
+  </p>
+</header>
+
+{% if flash %}<div class="flash" role="status">{{ icon('check-circle', 16) }} {{ flash }}</div>{% endif %}
+
+<div class="q-grid">
+  <div class="stack">
+    {% if q.status == 'superseded' and superseded_by %}
+    <div class="card notice"><div class="icon">{{ icon('history', 18) }}</div><div>
+      <p><strong>A newer message in this thread replaced this query.</strong></p>
+      <p>See <a href="/queries/{{ superseded_by.id }}">{{ superseded_by.subject }}</a>. Unedited drafts for the older message were removed from the mailbox.</p>
+    </div></div>
+    {% endif %}
+
+    {% if draft %}
+    <article class="card" aria-labelledby="draft-title">
+      <div class="card-head">
+        <div>
+          <h2 id="draft-title">Draft reply</h2>
+          <div class="hint">{{ icon('check-circle', 13) }} Saved in {{ mailbox_name }} as a draft · not sent{% if draft.instruction %} · rewritten with an instruction{% endif %}</div>
+        </div>
+        {% if draft.web_link %}<a class="btn primary" href="{{ draft.web_link }}" target="_blank" rel="noopener">{{ icon('external', 15) }} Open draft in {{ mailbox_name }}</a>{% endif %}
+      </div>
+      <div class="card-body">
+        {% set checks = [] %}
+        {% if draft.unsupported %}{% set _ = checks.append('No sources cited: check every fact in this draft.') %}{% endif %}
+        {% if draft.dropped_citations %}{% set _ = checks.append(draft.dropped_citations | length ~ ' citation(s) named sources the assistant was not given and were removed.') %}{% endif %}
+        {% if (draft.confidence or 1) < 0.55 or (q.confidence or 1) < 0.55 %}{% set _ = checks.append('Low confidence: review carefully.') %}{% endif %}
+        {% for m in draft.missing_info %}{% set _ = checks.append(m) %}{% endfor %}
+        {% if checks %}
+        <div class="checks">
+          <h3>{{ icon('alert', 14) }} Check before sending</h3>
+          <ul>{% for c in checks %}<li>{{ c }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+        <dl class="envelope">
+          <dt>To</dt><dd>{{ q.sender_name or '' }} &lt;{{ q.sender_email }}&gt;</dd>
+          <dt>Subject</dt><dd>{{ 'Re: ' ~ q.subject if not (q.subject or '').lower().startswith('re:') else q.subject }}</dd>
+        </dl>
+        <div class="letter">{{ draft.body }}</div>
+        <div class="letter signature">{{ settings.reply_signature }}</div>
+      </div>
+      <div class="card-body">
+        <h3 style="margin-bottom: 10px">Sources cited ({{ draft.citations | length }})</h3>
+        {% if draft.citations %}
+        <div class="sources">
+          {% for c in draft.citations %}
+          {% set s = sources_by_id.get(c.source_id) %}
+          <div class="source">
+            <span class="icon">{% if c.source_id.startswith('KB:') %}{{ icon('book', 14) }}{% elif c.source_id.startswith('HISTORY:') %}{{ icon('history', 14) }}{% else %}{{ icon('building', 14) }}{% endif %}</span>
+            <div>
+              <div class="title">
+                {% if c.source_id.startswith('KB:') %}<a href="/kb/{{ c.source_id[3:].split('#')[0] }}#{{ c.source_id.split('#')[1] if '#' in c.source_id else '' }}">{{ s.title if s else c.source_id }}</a>
+                {% else %}{{ s.title if s else c.source_id }}{% endif %}
+              </div>
+              <div class="supports">Supports: {{ c.supports }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="who-sub">This draft does not cite any source.</p>
+        {% endif %}
+        <details class="more">
+          <summary>Show the exact text saved in {{ mailbox_name }}</summary>
+          <pre>{{ draft.full_text }}</pre>
+        </details>
+      </div>
+      {% if q.status not in ('replied', 'resolved', 'superseded') %}
+      <div class="card-body">
+        <form class="regen" method="post" action="/queries/{{ q.id }}/regenerate" data-confirm="Write a new draft? It replaces the draft in {{ mailbox_name }} unless someone has already edited it.">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <label for="instruction"><h3>Rewrite this draft</h3></label>
+          <textarea id="instruction" name="instruction" placeholder="Optional instruction, e.g. “Offer a call tomorrow at 10:00” or “Shorter, and mention the refund reference.”"></textarea>
+          <div class="row">
+            <span>Uses the same sources. An edited draft in the mailbox is never overwritten.</span>
+            <button class="btn" type="submit" data-busy="Writing…">{{ icon('pencil', 14) }} Rewrite draft</button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+    </article>
+    {% elif q.status == 'excluded' %}
+    <div class="card notice"><div class="icon">{{ icon('lock', 18) }}</div><div>
+      <p><strong>Confidential client: not processed by AI</strong></p>
+      <p>{{ q.excluded_reason | capitalize }}. Nothing from this email was sent to the model or stored here; open it in {{ mailbox_name }} to reply.</p>
+    </div></div>
+    {% elif q.status in ('needs_human', 'error') %}
+    <div class="card notice violet"><div class="icon">{{ icon('user', 18) }}</div><div>
+      <p><strong>{{ 'No draft: a person needs to reply' if q.status == 'needs_human' else 'Processing will be retried on the next inbox check' }}</strong></p>
+      <p>{{ q.error or 'The assistant could not write a draft for this email.' }}</p>
+    </div></div>
+    {% elif q.status == 'no_reply_needed' %}
+    <div class="card notice"><div class="icon">{{ icon('check', 18) }}</div><div>
+      <p><strong>No reply needed</strong></p>
+      <p>{{ q.summary }}</p>
+    </div></div>
+    {% endif %}
+
+    {% if q.body_text %}
+    <article class="card">
+      <div class="card-head"><h2>Original email</h2><span class="hint">{{ q.received_at | local }}</span></div>
+      <div class="card-body">
+        <dl class="envelope">
+          <dt>From</dt><dd>{{ q.sender_name or '' }} &lt;{{ q.sender_email }}&gt;</dd>
+          <dt>Subject</dt><dd>{{ q.subject }}</dd>
+        </dl>
+        <div class="letter">{{ q.body_text }}</div>
+      </div>
+    </article>
+    {% endif %}
+  </div>
+
+  <aside class="stack">
+    {% if q.category %}
+    <section class="card">
+      <div class="card-head"><h2>Triage</h2></div>
+      <div class="card-body">
+        <dl class="facts">
+          <dt>Urgency</dt><dd>{{ urgency(q.urgency) }}{% if q.urgency_reason %}<div class="reason">{{ q.urgency_reason }}</div>{% endif %}</dd>
+          <dt>Category</dt><dd>{{ category_label(q.category) }}</dd>
+          <dt>Sentiment</dt><dd>{{ (q.sentiment or '') | capitalize }}</dd>
+          <dt>Complexity</dt><dd>{{ (q.complexity or '') | capitalize }}</dd>
+          <dt>Confidence</dt><dd>{{ ((q.confidence or 0) * 100) | round | int }}%<div class="meter"><span style="width: {{ ((q.confidence or 0) * 100) | round | int }}%"></span></div></dd>
+          {% if q.escalation_flags %}<dt>Flags</dt><dd class="chips">{% for f in q.escalation_flags %}<span class="flag">{{ f.replace('_', ' ') }}</span>{% endfor %}</dd>{% endif %}
+          {% if q.questions %}<dt>Asks</dt><dd><ul class="qlist">{% for item in q.questions %}<li>{{ item }}</li>{% endfor %}</ul></dd>{% endif %}
+          {% if q.client_hint and not q.client_name %}<dt>Says from</dt><dd>{{ q.client_hint }} <span class="who-sub">(unverified)</span></dd>{% endif %}
+        </dl>
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="card">
+      <div class="card-head"><h2>Routing</h2></div>
+      <div class="card-body">
+        <dl class="facts">
+          <dt>Assigned to</dt><dd>{% if q.assignee_name %}{{ person(q.assignee_name) }}{% else %}<span class="who-sub">Nobody</span>{% endif %}</dd>
+          {% if q.route_rule %}<dt>Why</dt><dd>{{ q.route_reason }}</dd>{% endif %}
+          {% if q.due_at %}<dt>Reply by</dt><dd>{{ q.due_at | local }}{% if q.due.text %}<div class="reason due-{{ q.due.tone }}">{{ q.due.text }}</div>{% endif %}</dd>{% endif %}
+          <dt>Alert</dt><dd>{{ 'Posted to the team channel' if q.alerted else 'Not needed' }}</dd>
+        </dl>
+        {% if q.status not in ('superseded',) %}
+        <form class="side-form" method="post" action="/queries/{{ q.id }}/assign">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <select name="assignee" aria-label="Reassign to">
+            {% for m in team %}<option value="{{ m.key }}" {{ 'selected' if m.key == q.assignee_key }}>{{ m.name }} · {{ m.role }}</option>{% endfor %}
+          </select>
+          <button class="btn small" type="submit">Reassign</button>
+        </form>
+        <form class="side-form" method="post" action="/queries/{{ q.id }}/status">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          {% if q.status in ('replied', 'resolved', 'no_reply_needed') %}
+          <input type="hidden" name="action" value="reopen"><button class="btn small" type="submit">Reopen</button>
+          {% else %}
+          <input type="hidden" name="action" value="resolve"><button class="btn small" type="submit">{{ icon('check', 13) }} Mark resolved</button>
+          {% endif %}
+        </form>
+        {% endif %}
+      </div>
+    </section>
+
+    {% if client %}
+    <section class="card">
+      <div class="card-head"><h2>Client</h2>{{ tier(client.tier) }}</div>
+      <div class="card-body">
+        <dl class="facts">
+          <dt>Company</dt><dd>{{ client.name }}</dd>
+          <dt>Plan</dt><dd>{{ client.plan }}</dd>
+          {% if owner %}<dt>Account manager</dt><dd>{{ owner.name }}</dd>{% endif %}
+          <dt>Status</dt><dd>{% if client.status == 'at_risk' %}<span class="flag">At risk</span>{% else %}{{ client.status | replace('_', ' ') | capitalize }}{% endif %}</dd>
+          {% if client.renewal_date %}<dt>Renewal</dt><dd>{{ client.renewal_date }}</dd>{% endif %}
+          {% if client.notes and not client.ai_excluded %}<dt>Notes</dt><dd>{{ client.notes }}</dd>{% endif %}
+          {% if client.ai_excluded %}<dt>AI</dt><dd>{{ icon('lock', 12) }} Excluded from AI processing</dd>{% endif %}
+        </dl>
+      </div>
+    </section>
+    {% endif %}
+
+    {% if sources %}
+    <section class="card">
+      <div class="card-head"><h2>Context retrieved</h2><span class="hint">{{ cited | length }} of {{ sources | length }} cited</span></div>
+      <div class="card-body">
+        <ul class="context-list">
+          {% for s in sources %}
+          <li>{% if s.source_id in cited %}<span class="mark">✓</span>{% else %}<span class="unmark">•</span>{% endif %}<span>{{ s.title }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="card">
+      <div class="card-head"><h2>Activity</h2></div>
+      <div class="card-body">
+        <ul class="timeline">
+          {% for a in activity %}
+          <li><div><div>{{ a.action.split('.', 1)[1].replace('_', ' ') | capitalize }}{% if a.actor not in ('system',) %} by {{ a.actor }}{% endif %}</div><div class="when">{{ a.at | local }}</div></div></li>
+          {% endfor %}
+        </ul>
+        {% if usage %}
+        <p class="usage" style="margin-top: 12px">
+          Model calls: {% for u in usage %}{{ u.purpose }} ({{ u.model }}, {{ u.input_tokens }} in{% if u.cache_read_tokens %} / {{ u.cache_read_tokens }} cached{% endif %}, {{ u.output_tokens }} out){{ ', ' if not loop.last }}{% endfor %}
+        </p>
+        {% endif %}
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}
