@@ -1,0 +1,14 @@
+# Mail matching any rule below is never sent to the AI. It is labelled
+# "AI/Excluded", routed to a person by the rules in routing.yaml, and only its
+# metadata (sender, time, assignee) is stored. Clients with ai_excluded=true in
+# clients.csv are excluded as well.
+
+excluded_domains:
+  - harrowpike.example
+
+excluded_addresses: []
+
+# Case-insensitive markers in the subject line.
+subject_markers:
+  - "[confidential]"
+  - "privileged & confidential"
