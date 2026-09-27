@@ -21,7 +21,7 @@
       <div class="mailbox-pill" title="Mailbox and model in use">
         <span class="dot"></span>{{ settings.mailbox_address }}
         · {{ {'demo': 'Demo mailbox', 'gmail': 'Gmail', 'graph': 'Outlook'}.get(mail_provider, mail_provider) }}
-        · {{ 'Claude' if settings.ai_provider == 'claude' else 'Scripted AI' }}
+        · {{ 'Gemini' if settings.ai_provider == 'gemini' else 'Scripted AI' }}
       </div>
     </div>
   </header>

@@ -12,7 +12,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEMO_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "demo"
 
-Effort = Literal["low", "medium", "high", "xhigh", "max"]
+ThinkingLevel = Literal["low", "medium", "high"]
 
 
 class Settings(BaseSettings):
@@ -24,15 +24,14 @@ class Settings(BaseSettings):
 
     # Which mailbox and which model back the pipeline.
     mail_provider: Literal["demo", "gmail", "graph"] = "demo"
-    ai_provider: Literal["claude", "mock"] = "mock"
+    ai_provider: Literal["gemini", "mock"] = "mock"
 
-    # Claude
-    anthropic_model: str = "claude-opus-5"
-    triage_effort: Effort = "low"
-    draft_effort: Effort = "medium"
-    # "default" re-runs a request the safety classifiers decline on Anthropic's recommended
-    # fallback model; "off" returns the refusal (the query is then routed to a person).
-    anthropic_fallbacks: Literal["default", "off"] = "default"
+    # Gemini (the SDK also reads GEMINI_API_KEY from the environment)
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-3.8-flash"
+    # Thinking level per step: quick classification, more careful drafting.
+    triage_thinking: ThinkingLevel = "low"
+    draft_thinking: ThinkingLevel = "medium"
 
     # Business context and rules
     business_profile_file: Path = DEMO_DIR / "business_profile.md"

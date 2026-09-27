@@ -6,11 +6,11 @@ It never sends email. Replies are always sent by your team from Gmail or Outlook
 
 ![Python](https://img.shields.io/badge/Python-3.11+-3776ab?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-dashboard%20%2B%20API-009688?logo=fastapi&logoColor=white)
-![Claude](https://img.shields.io/badge/Claude-structured%20outputs-d97757)
+![Gemini](https://img.shields.io/badge/Gemini-structured%20outputs-4285f4?logo=googlegemini&logoColor=white)
 ![Gmail](https://img.shields.io/badge/Gmail%20API-supported-ea4335?logo=gmail&logoColor=white)
 ![Microsoft 365](https://img.shields.io/badge/Microsoft%20Graph-supported-0078d4)
 ![n8n](https://img.shields.io/badge/n8n-workflows-ea4b71?logo=n8n&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-85%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-90%20passing-2ea44f)
 
 ## The problem
 
@@ -22,7 +22,7 @@ payday sits between a newsletter and a thank-you note.
 
 - **Connects to a Gmail or Microsoft 365 shared inbox.** It uses the Gmail API
   or Microsoft Graph. A built-in demo mailbox runs without any account.
-- **Classifies every email** with Claude:
+- **Classifies every email** with Gemini:
   - category and urgency, with the reason for the urgency
   - sentiment and complexity
   - escalation flags: legal, regulatory, churn risk, executive, payment deadline
@@ -100,21 +100,21 @@ payday sits between a newsletter and a thank-you note.
 > Tidewater Payroll, with its clients, help-centre articles and a shared inbox
 > of 23 emails. The classifications and drafts in them come from
 > `AI_PROVIDER=mock`, a scripted stand-in with hand-written responses. It
-> follows the same schemas Claude fills in production, so the demo runs
+> follows the same schemas Gemini fills in production, so the demo runs
 > without an API key. Everything else is the real app: the privacy gate,
 > retrieval, citation checks, routing, labels, drafts, reply detection and the
-> daily summary. With `AI_PROVIDER=claude` and an API key, the same run uses
-> Claude, and `scripts/capture_media.py` re-shoots the screenshots.
+> daily summary. With `AI_PROVIDER=gemini` and an API key, the same run uses
+> Gemini, and `scripts/capture_media.py` re-shoots the screenshots.
 
 ## How it works
 
-![Workflow: new email, privacy gate, classify with Claude, context lookup, cited draft, save in mailbox, route and alert, person reviews and sends](docs/media/workflow.svg)
+![Workflow: new email, privacy gate, classify with Gemini, context lookup, cited draft, save in mailbox, route and alert, person reviews and sends](docs/media/workflow.svg)
 
 ```mermaid
 sequenceDiagram
     participant M as Shared inbox (Gmail / Outlook)
     participant P as Triage service
-    participant C as Claude
+    participant C as Gemini
     participant K as Client records + knowledge base
     participant T as Slack / Teams
     actor A as Team member
@@ -182,14 +182,14 @@ triage serve              # http://localhost:8000
 Open **Demo mailbox → Before**, then go back to the queue and press **Check
 inbox now**. Or use Docker: `docker compose up`.
 
-### With Claude
+### With Gemini
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-AI_PROVIDER=claude triage serve
+export GEMINI_API_KEY=...        # from https://aistudio.google.com/apikey
+AI_PROVIDER=gemini triage serve
 ```
 
-Press **Reset demo** and then **Check inbox now**. Claude now classifies and
+Press **Reset demo** and then **Check inbox now**. Gemini now classifies and
 drafts every email.
 
 ### With a real mailbox
@@ -211,22 +211,22 @@ Replace the demo business files with your own:
 
 ## Engineering decisions
 
-- **Two focused Claude calls, not an agent.**
+- **Two focused Gemini calls, not an agent.**
   - Classification and drafting are single structured-output requests
-    (`output_config.format` with a Pydantic schema), so every response parses
-    or fails loudly.
-  - Classification runs at `low` effort and drafting at `medium`. The model
-    and both effort levels are settings.
-  - The system prompts are frozen text plus the business profile, and cached
-    with `cache_control`. Per-email content comes after the cache breakpoint.
-    Token usage, including cache reads, is logged per query.
+    (JSON output with `response_schema` set to a Pydantic model), so every
+    response parses or fails loudly.
+  - Classification runs at thinking level `low` and drafting at `medium`. The
+    model (default `gemini-3.8-flash`) and both thinking levels are settings.
+  - The system instructions are frozen text plus the business profile, so
+    Gemini's implicit caching can reuse them across emails. Token usage,
+    including cached tokens, is logged per query.
 - **Refusals and failures have a place to go.**
-  - Requests opt into server-side `fallbacks: "default"`.
-  - A refusal still becomes a "needs a person" query.
+  - An email Gemini blocks (safety or other policy) becomes a "needs a
+    person" query.
   - Transient API errors are retried on the next poll. After three attempts
     the query goes to a person.
 - **Retrieval is deliberately simple.** Articles are split by section and
-  indexed in SQLite FTS5 with BM25 ranking. Claude writes the search queries
+  indexed in SQLite FTS5 with BM25 ranking. Gemini writes the search queries
   during classification. Section-level ids make citations checkable and
   clickable. Swap in a vector store behind `KnowledgeSource` if the knowledge
   base outgrows keyword search.
@@ -243,7 +243,7 @@ Replace the demo business files with your own:
 
 ## Tech stack
 
-Python 3.11+, FastAPI, Jinja2 and SQLite (FTS5), with the Anthropic Python SDK
+Python 3.11+, FastAPI, Jinja2 and SQLite (FTS5), with the Google Gen AI Python SDK (`google-genai`)
 and Pydantic. Mail goes through the Gmail API (google-api-python-client) or
 Microsoft Graph (httpx + MSAL). Alerts go to Slack or Teams through webhooks.
 APScheduler runs the poller and the daily summary. The n8n workflows are an
@@ -257,9 +257,10 @@ the full list. The main ones:
 | Variable | Default | Purpose |
 |---|---|---|
 | `MAIL_PROVIDER` | `demo` | `demo`, `gmail` or `graph` |
-| `AI_PROVIDER` | `mock` | `claude` or the scripted `mock` |
-| `ANTHROPIC_MODEL` | `claude-opus-5` | Model for both steps |
-| `TRIAGE_EFFORT` / `DRAFT_EFFORT` | `low` / `medium` | Effort for classification and drafting |
+| `AI_PROVIDER` | `mock` | `gemini` or the scripted `mock` |
+| `GEMINI_API_KEY` | none | Gemini API key |
+| `GEMINI_MODEL` | `gemini-3.8-flash` | Model for both steps |
+| `TRIAGE_THINKING` / `DRAFT_THINKING` | `low` / `medium` | Thinking level for classification and drafting |
 | `MAILBOX_ADDRESS`, `TEAM_DOMAINS` | demo values | The shared inbox, and domains whose mail is the team's own |
 | `SCHEDULER_ENABLED`, `POLL_SECONDS` | `false`, `120` | Built-in poller (turn off when n8n or cron drives it) |
 | `DIGEST_TIME`, `DIGEST_DAYS`, `TIMEZONE` | `08:45`, `mon-fri`, `Europe/London` | Daily summary schedule |
@@ -291,8 +292,8 @@ The tests need no API key or network. They cover:
   detection
 - the Gmail and Graph providers, against an in-memory fake Gmail client and a
   mock Graph transport
-- the Claude request shape and failure handling, against a local stub of the
-  Messages API
+- the Gemini request shape and failure handling, against a local stub of the
+  Gemini API
 - routing, SLA, privacy, knowledge search, notifications and the digest
 - the dashboard and API, including authentication
 - the no-send checks
@@ -303,7 +304,7 @@ To re-record the screenshots, start the app (`triage serve`), then run
 ```
 src/triage/
   pipeline.py          privacy gate → classify → context → draft → labels → routing → alerts
-  ai/                  Claude implementation, scripted stand-in, prompts
+  ai/                  Gemini implementation, scripted stand-in, prompts
   mail/                Gmail, Microsoft Graph and demo mailboxes (no send methods)
   context/             client directory, knowledge base (SQLite FTS5 or HTTP)
   routing.py, privacy.py, digest.py, notify/
@@ -317,8 +318,8 @@ docs/                  setup guides, architecture, security, screenshots
 
 - **Gmail and Microsoft Graph are tested against faithful fakes, not live
   accounts.** Connect a test mailbox before production (see the setup guides).
-- **Live Claude calls have not been run.** This build was developed without an
-  API key. The request shape is tested against a stub of the Messages API, and
+- **Live Gemini calls have not been run.** This build was developed without an
+  API key. The request shape is tested against a stub of the Gemini API, and
   the screenshots use the scripted stand-in.
 - **Polling, not push.** Gmail `watch` via Pub/Sub or Graph change
   notifications would cut latency below the poll interval.
@@ -327,4 +328,4 @@ docs/                  setup guides, architecture, security, screenshots
 - **One shared login, and SQLite storage.** A multi-user deployment would add
   per-user accounts and Postgres.
 - **Attachments are listed by name but not read.** PDFs such as invoices or
-  rejection reports could be passed to Claude as documents.
+  rejection reports could be passed to Gemini as documents.

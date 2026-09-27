@@ -10,7 +10,7 @@ flowchart LR
     subgraph Service["Triage service (Python)"]
       P[pipeline.py]
       PR[privacy gate]
-      AI[Assistant: Claude or scripted]
+      AI[Assistant: Gemini or scripted]
       CX[Client directory + knowledge base]
       R[Routing rules + SLA]
       DB[(SQLite)]
@@ -19,7 +19,7 @@ flowchart LR
     end
     N[n8n]:::ext
     T[Slack / Teams]:::ext
-    C[Claude API]:::ext
+    C[Gemini API]:::ext
 
     S -->|poll| P
     G & O & D <-->|read, label, draft| P
@@ -93,23 +93,30 @@ stateDiagram-v2
 Open statuses (counted in the queue and the daily summary): `draft_ready`,
 `needs_human`, `excluded`, `error`.
 
-## Claude requests
+## Gemini requests
 
 Each email makes two requests with the same shape, both sent to
-`client.beta.messages.create`:
+`client.models.generate_content` (Google Gen AI SDK, model `GEMINI_MODEL`,
+default `gemini-3.8-flash`):
 
-- `system`: the frozen prompt plus the business profile, with
-  `cache_control: ephemeral`.
-- `messages`: one user turn containing the client record, the email and
+- `system_instruction`: the frozen prompt plus the business profile. It is
+  identical for every email, so Gemini's implicit caching can reuse it. Cached
+  tokens are logged per call.
+- `contents`: one user turn containing the client record, the email and
   earlier thread messages. The draft request also includes the sources, the
   triage summary and an optional teammate instruction.
-- `thinking: adaptive`, and `output_config` with the effort and a JSON schema
-  generated from the Pydantic model by `anthropic.transform_schema`.
-- `betas: ["server-side-fallback-2026-07-01"]`, `fallbacks: "default"`. This
-  can be turned off with `ANTHROPIC_FALLBACKS=off`.
+- `response_mime_type: application/json`, with `response_schema` set to the
+  Pydantic model (`Classification` or `DraftResult`).
+- `thinking_config.thinking_level`: `TRIAGE_THINKING` (default `low`) or
+  `DRAFT_THINKING` (default `medium`).
+- The SDK retries 429s, 5xx and connection errors up to 3 times.
 
-The response is parsed only after checking `stop_reason`: `refusal` and
-`max_tokens` are handled explicitly.
+The response is validated only after its status is checked:
+
+- A blocked prompt, or a `SAFETY`, `PROHIBITED_CONTENT`, `BLOCKLIST`, `SPII`
+  or `RECITATION` finish, means the query goes to a person.
+- `MAX_TOKENS` and 429/5xx errors are retried on the next poll.
+- Other 4xx errors go straight to a person.
 
 ## Storage
 
@@ -131,7 +138,7 @@ One SQLite file with WAL mode and one short-lived connection per unit of work:
 | Interface | Implementations | Add |
 |---|---|---|
 | `MailProvider` | Gmail, Graph, demo | IMAP (drafts via `APPEND` to Drafts), Front, Help Scout |
-| `Assistant` | Claude, scripted mock | — |
+| `Assistant` | Gemini, scripted mock | another model provider |
 | `KnowledgeSource` | LocalKB (FTS5), HttpKB | vector search, Confluence, Notion |
 | `ClientDirectory` | CSV | CRM lookup (HubSpot, Salesforce) |
 | `Notifier` | log, Slack, Teams | email summary to managers |

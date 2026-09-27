@@ -288,3 +288,12 @@ def _query_by_id(env: Env, query_id: int) -> dict:  # type: ignore[type-arg]
         q = get_query(conn, query_id)
     assert q
     return q
+
+
+def test_every_scripted_demo_citation_survives_validation(env: Env) -> None:
+    process_inbox(env.svc)
+    with env.db.session() as conn:
+        rows = conn.execute("SELECT dropped_citations, citations FROM drafts").fetchall()
+    assert rows
+    assert all(json.loads(r["dropped_citations"]) == [] for r in rows)
+    assert sum(len(json.loads(r["citations"])) for r in rows) > 30

@@ -1,4 +1,4 @@
-"""ClaudeAssistant against a local stub of the Messages API: request shape, parsing and failure handling."""
+"""GeminiAssistant against a local stub of the Gemini API: request shape, parsing and failure handling."""
 
 from __future__ import annotations
 
@@ -9,12 +9,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-import anthropic
 import pytest
 from conftest import NOW, make_settings
+from google import genai
+from google.genai import types
 
 from triage.ai.base import AssistantError, AssistantRefusal
-from triage.ai.claude import FALLBACK_BETA, ClaudeAssistant
+from triage.ai.gemini import GeminiAssistant
 from triage.models import Classification, ContextSource, EmailAddress, InboundEmail
 
 CLASSIFICATION = {
@@ -39,23 +40,25 @@ class Stub:
         self.requests: list[dict[str, Any]] = []
 
 
-def message(content: list[dict[str, Any]], stop_reason: str = "end_turn", **extra: Any) -> dict[str, Any]:
+def reply(text: str | None, finish: str = "STOP", **extra: Any) -> dict[str, Any]:
+    candidate: dict[str, Any] = {"finishReason": finish}
+    if text is not None:
+        candidate["content"] = {"parts": [{"text": text}], "role": "model"}
     return {
-        "id": "msg_test",
-        "type": "message",
-        "role": "assistant",
-        "model": "claude-opus-5",
-        "content": content,
-        "stop_reason": stop_reason,
-        "stop_sequence": None,
-        "usage": {
-            "input_tokens": 1200,
-            "output_tokens": 250,
-            "cache_read_input_tokens": 900,
-            "cache_creation_input_tokens": 0,
+        "candidates": [candidate],
+        "usageMetadata": {
+            "promptTokenCount": 1200,
+            "candidatesTokenCount": 250,
+            "thoughtsTokenCount": 40,
+            "cachedContentTokenCount": 900,
         },
+        "modelVersion": "gemini-3.8-flash",
         **extra,
     }
+
+
+def error(code: int, status: str) -> dict[str, Any]:
+    return {"error": {"code": code, "message": status.lower(), "status": status}}
 
 
 @pytest.fixture
@@ -84,9 +87,12 @@ def stub() -> Iterator[tuple[Stub, str]]:
     server.shutdown()
 
 
-def assistant(tmp_path: Path, base_url: str, **overrides: Any) -> ClaudeAssistant:
-    client = anthropic.Anthropic(api_key="test-key", base_url=base_url, max_retries=0)
-    return ClaudeAssistant(make_settings(tmp_path, ai_provider="claude", **overrides), client=client)
+def assistant(tmp_path: Path, base_url: str, **overrides: Any) -> GeminiAssistant:
+    client = genai.Client(
+        api_key="test-key",
+        http_options=types.HttpOptions(base_url=base_url, retry_options=types.HttpRetryOptions(attempts=1)),
+    )
+    return GeminiAssistant(make_settings(tmp_path, ai_provider="gemini", **overrides), client=client)
 
 
 EMAIL = InboundEmail(
@@ -101,82 +107,78 @@ EMAIL = InboundEmail(
 
 def test_classify_request_shape_and_parsing(tmp_path: Path, stub: tuple[Stub, str]) -> None:
     state, url = stub
-    state.responses.append((200, message([{"type": "text", "text": json.dumps(CLASSIFICATION)}])))
+    state.responses.append((200, reply(json.dumps(CLASSIFICATION))))
     result = assistant(tmp_path, url).classify(EMAIL, None)
 
     assert result.value.category == "billing"
     assert result.value.confidence == 1.0  # clamped
-    assert result.usage and result.usage.cache_read_tokens == 900
+    assert result.usage is not None
+    assert result.usage.model == "gemini-3.8-flash"
+    assert result.usage.cache_read_tokens == 900
+    assert result.usage.output_tokens == 290  # answer + thinking tokens
 
     request = state.requests[0]
     body = request["body"]
-    assert request["path"].startswith("/v1/messages")
-    assert FALLBACK_BETA in request["headers"].get("anthropic-beta", "")
-    assert body["model"] == "claude-opus-5"
-    assert body["fallbacks"] == "default"
-    assert body["thinking"] == {"type": "adaptive"}
-    assert body["output_config"]["effort"] == "low"
-    assert body["output_config"]["format"]["type"] == "json_schema"
-    assert "category" in body["output_config"]["format"]["schema"]["properties"]
-    assert body["system"][0]["cache_control"] == {"type": "ephemeral"}
-    assert "Tidewater Payroll" in body["system"][0]["text"]
-    user = body["messages"][0]["content"]
+    assert request["path"] == "/v1beta/models/gemini-3.8-flash:generateContent"
+    assert request["headers"]["x-goog-api-key"] == "test-key"
+    config = body["generationConfig"]
+    assert config["responseMimeType"] == "application/json"
+    assert "category" in config["responseSchema"]["properties"]
+    assert json.dumps(config["thinkingConfig"]).count("LOW") == 1
+    assert "Tidewater Payroll" in body["systemInstruction"]["parts"][0]["text"]
+    user = body["contents"][0]["parts"][0]["text"]
     assert "We were charged twice." in user
     assert "old quoted text" not in user  # quoted history is stripped
 
 
-def test_draft_uses_draft_effort_and_includes_sources(tmp_path: Path, stub: tuple[Stub, str]) -> None:
+def test_draft_uses_draft_thinking_and_includes_sources(tmp_path: Path, stub: tuple[Stub, str]) -> None:
     state, url = stub
     draft = {"body": "Hi Raj,\n\nSorted.", "citations": [], "missing_info": [], "confidence": 0.8}
-    state.responses.append(
-        (
-            200,
-            message(
-                [
-                    {"type": "thinking", "thinking": "", "signature": "sig"},
-                    {"type": "text", "text": json.dumps(draft)},
-                ]
-            ),
-        )
-    )
+    state.responses.append((200, reply(json.dumps(draft))))
     source = ContextSource(source_id="KB:refund-policy#x", kind="kb", title="Refunds", text="Five days.")
     result = assistant(tmp_path, url).draft(
         EMAIL, Classification.model_validate(CLASSIFICATION | {"confidence": 0.9}), None, [source], "Be brief"
     )
     assert result.value.body.startswith("Hi Raj")
     body = state.requests[0]["body"]
-    assert body["output_config"]["effort"] == "medium"
-    content = body["messages"][0]["content"]
+    assert json.dumps(body["generationConfig"]["thinkingConfig"]).count("MEDIUM") == 1
+    content = body["contents"][0]["parts"][0]["text"]
     assert '<source id="KB:refund-policy#x"' in content and "Be brief" in content
 
 
-def test_fallbacks_can_be_turned_off(tmp_path: Path, stub: tuple[Stub, str]) -> None:
+def test_model_is_configurable(tmp_path: Path, stub: tuple[Stub, str]) -> None:
     state, url = stub
-    state.responses.append((200, message([{"type": "text", "text": json.dumps(CLASSIFICATION)}])))
-    assistant(tmp_path, url, anthropic_fallbacks="off").classify(EMAIL, None)
-    assert "fallbacks" not in state.requests[0]["body"]
+    state.responses.append((200, reply(json.dumps(CLASSIFICATION))))
+    assistant(tmp_path, url, gemini_model="gemini-3.5-flash-lite").classify(EMAIL, None)
+    assert state.requests[0]["path"] == "/v1beta/models/gemini-3.5-flash-lite:generateContent"
 
 
-def test_refusal_is_reported(tmp_path: Path, stub: tuple[Stub, str]) -> None:
+@pytest.mark.parametrize(
+    "payload",
+    [
+        reply(None, "SAFETY"),
+        reply(None, "PROHIBITED_CONTENT"),
+        {"promptFeedback": {"blockReason": "SAFETY"}, "usageMetadata": {"promptTokenCount": 10}},
+    ],
+)
+def test_blocked_responses_are_refusals(
+    tmp_path: Path, stub: tuple[Stub, str], payload: dict[str, Any]
+) -> None:
     state, url = stub
-    state.responses.append(
-        (
-            200,
-            message([], "refusal", stop_details={"type": "refusal", "category": "cyber", "explanation": "x"}),
-        )
-    )
-    with pytest.raises(AssistantRefusal, match="cyber"):
+    state.responses.append((200, payload))
+    with pytest.raises(AssistantRefusal):
         assistant(tmp_path, url).classify(EMAIL, None)
 
 
 @pytest.mark.parametrize(
     ("status", "payload", "retryable"),
     [
-        (200, message([{"type": "text", "text": '{"category": "bil'}], "max_tokens"), True),
-        (200, message([{"type": "text", "text": '{"category": "nonsense"}'}]), True),
-        (429, {"type": "error", "error": {"type": "rate_limit_error", "message": "slow down"}}, True),
-        (529, {"type": "error", "error": {"type": "overloaded_error", "message": "busy"}}, True),
-        (400, {"type": "error", "error": {"type": "invalid_request_error", "message": "bad"}}, False),
+        (200, reply('{"category": "bil', "MAX_TOKENS"), True),
+        (200, reply('{"category": "nonsense"}'), True),
+        (429, error(429, "RESOURCE_EXHAUSTED"), True),
+        (503, error(503, "UNAVAILABLE"), True),
+        (400, error(400, "INVALID_ARGUMENT"), False),
+        (403, error(403, "PERMISSION_DENIED"), False),
     ],
 )
 def test_failures_become_assistant_errors(
@@ -187,3 +189,9 @@ def test_failures_become_assistant_errors(
     with pytest.raises(AssistantError) as info:
         assistant(tmp_path, url).classify(EMAIL, None)
     assert info.value.retryable is retryable
+
+
+def test_connection_failure_is_retryable(tmp_path: Path) -> None:
+    with pytest.raises(AssistantError) as info:
+        assistant(tmp_path, "http://127.0.0.1:9").classify(EMAIL, None)
+    assert info.value.retryable

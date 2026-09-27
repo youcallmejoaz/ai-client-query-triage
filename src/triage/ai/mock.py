@@ -1,9 +1,9 @@
-"""A deterministic stand-in for Claude, so the product can be demoed and tested offline.
+"""A deterministic stand-in for Gemini, so the product can be demoed and tested offline.
 
 For the bundled demo emails it returns hand-written responses from
 fixtures/demo/scripted_responses.json. For anything else it uses simple keyword
 rules and a template reply built from the best retrieved source. Real
-classification and drafting quality comes from the Claude assistant.
+classification and drafting quality comes from the Gemini assistant.
 """
 
 from __future__ import annotations
@@ -119,7 +119,7 @@ class MockAssistant:
             result = DraftResult.model_validate(scripted["draft"])
             if instruction:
                 result.body += (
-                    "\n\n[Mock assistant: with AI_PROVIDER=claude the draft is rewritten to follow the "
+                    "\n\n[Mock assistant: with AI_PROVIDER=gemini the draft is rewritten to follow the "
                     f"instruction: {instruction.strip()!r}]"
                 )
             return AIResult(result, self._usage())

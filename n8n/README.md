@@ -2,7 +2,7 @@
 
 The same pipeline, driven by [n8n](https://n8n.io) instead of the built-in
 poller. n8n watches the mailbox and does the mailbox writes. The Python service
-is the brain: `POST /api/triage` classifies the email with Claude, looks up the
+is the brain: `POST /api/triage` classifies the email with Gemini, looks up the
 client and the knowledge base, and returns labels, a cited draft and a routing
 decision. Every query still appears in the dashboard.
 
@@ -34,7 +34,7 @@ Outlook message nodes default to "send", so an unnamed operation would send.
 1. Run the triage service with an API key (`API_KEY=…`). With
    `docker compose --profile n8n up`, n8n reaches it at `http://triage:8000`,
    the URL already set in the workflows. Otherwise change the URL in the
-   *Triage with Claude* node.
+   *Triage with Gemini* node.
 2. In n8n, create the credentials the workflows reference:
    - **Triage API key**: a *Header Auth* credential with name `X-API-Key` and
      your `API_KEY` as the value.

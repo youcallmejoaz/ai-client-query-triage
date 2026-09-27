@@ -59,7 +59,7 @@
         }
       },
       "id": "3863c8df-360f-5265-925c-20edc9ec928f",
-      "name": "Triage with Claude",
+      "name": "Triage with Gemini",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -167,7 +167,7 @@
         "nodeCredentialType": "microsoftOutlookOAuth2Api",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ body: { contentType: 'HTML', content: $('Triage with Claude').item.json.draft.body_html + $json.body.content } }) }}",
+        "jsonBody": "={{ JSON.stringify({ body: { contentType: 'HTML', content: $('Triage with Gemini').item.json.draft.body_html + $json.body.content } }) }}",
         "options": {}
       },
       "id": "000f7800-f40e-5e09-af91-02ee27825ae7",
@@ -260,14 +260,14 @@
       "main": [
         [
           {
-            "node": "Triage with Claude",
+            "node": "Triage with Gemini",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Triage with Claude": {
+    "Triage with Gemini": {
       "main": [
         [
           {

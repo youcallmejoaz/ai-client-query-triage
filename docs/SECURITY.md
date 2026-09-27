@@ -38,7 +38,7 @@ For an excluded email:
 
 ## 3. Drafts are grounded and reviewable
 
-- Claude receives only the retrieved sources: knowledge-base sections, the
+- Gemini receives only the retrieved sources: knowledge-base sections, the
   client record and recent queries. It is told to state facts only from them
   and to cite each source it uses.
 - `validate_citations` removes citations of sources the model was not given
@@ -67,9 +67,11 @@ For an excluded email:
   two earlier thread messages, and attachment names only.
 - Nothing is sent to the model for auto-replies, bulk mail, emails that were
   already answered, or excluded clients.
-- Data sent to the Claude API is handled under Anthropic's commercial terms.
-  Check that this fits your data processing agreement, and use the exclusion
-  lists for anything that must stay in-house.
+- Data sent to the Gemini API is handled under Google's terms for the tier
+  you use. Use a paid tier for client email: Google's terms allow content sent
+  through the unpaid tier to be used to improve its products. Check that this
+  fits your data processing agreement, and use the exclusion lists for
+  anything that must stay in-house.
 
 ## 6. Access to the dashboard and API
 

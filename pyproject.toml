@@ -1,16 +1,16 @@
 [project]
 name = "ai-client-query-triage"
 version = "0.1.0"
-description = "Triage a shared client inbox with Claude: classify, look up context, and save cited draft replies for a person to send."
+description = "Triage a shared client inbox with Gemini: classify, look up context, and save cited draft replies for a person to send."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-  "anthropic>=1.8,<2",
   "apscheduler>=3.11,<4",
   "fastapi>=0.120",
   "google-api-python-client>=2.150",
   "google-auth>=2.35",
   "google-auth-oauthlib>=1.2",
+  "google-genai>=2.25,<3",
   "httpx>=0.28",
   "jinja2>=3.1",
   "msal>=1.31",

@@ -15,10 +15,10 @@ from .routing import Router
 
 
 def build_assistant(settings: Settings) -> Assistant:
-    if settings.ai_provider == "claude":
-        from .ai.claude import ClaudeAssistant
+    if settings.ai_provider == "gemini":
+        from .ai.gemini import GeminiAssistant
 
-        return ClaudeAssistant(settings)
+        return GeminiAssistant(settings)
     from .ai.mock import MockAssistant
 
     return MockAssistant(settings.demo_responses_file)

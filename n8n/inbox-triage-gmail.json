@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Inbox triage (Gmail)\nEvery minute: new mail in the shared inbox is sent to the triage service, which classifies it with Claude, looks up the client and the knowledge base, and writes a cited reply.\n\nThis workflow then **labels** the message, **saves the reply as a draft** in the same thread and **alerts Slack** for urgent or complex queries.\n\n**Nothing is ever sent.** There is no send or reply step; people send from Gmail.\n\nRun *Setup: create Gmail labels* once first.",
+        "content": "## Inbox triage (Gmail)\nEvery minute: new mail in the shared inbox is sent to the triage service, which classifies it with Gemini, looks up the client and the knowledge base, and writes a cited reply.\n\nThis workflow then **labels** the message, **saves the reply as a draft** in the same thread and **alerts Slack** for urgent or complex queries.\n\n**Nothing is ever sent.** There is no send or reply step; people send from Gmail.\n\nRun *Setup: create Gmail labels* once first.",
         "height": 300,
         "width": 520,
         "color": 5
@@ -61,7 +61,7 @@
         }
       },
       "id": "7e1aad96-3fa5-5456-a0c1-afbc90b4d505",
-      "name": "Triage with Claude",
+      "name": "Triage with Gemini",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -99,7 +99,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Gmail's API needs label IDs; the triage service returns label names.\nconst byName = Object.fromEntries($('List Gmail labels').all().map((l) => [l.json.name, l.json.id]));\nreturn $('Triage with Claude').all().map((item) => {\n  const r = item.json;\n  return {\n    json: {\n      ...r,\n      labelIds: r.labels.map((name) => byName[name]).filter(Boolean),\n      missingLabels: r.labels.filter((name) => !byName[name]),\n    },\n  };\n});"
+        "jsCode": "// Gmail's API needs label IDs; the triage service returns label names.\nconst byName = Object.fromEntries($('List Gmail labels').all().map((l) => [l.json.name, l.json.id]));\nreturn $('Triage with Gemini').all().map((item) => {\n  const r = item.json;\n  return {\n    json: {\n      ...r,\n      labelIds: r.labels.map((name) => byName[name]).filter(Boolean),\n      missingLabels: r.labels.filter((name) => !byName[name]),\n    },\n  };\n});"
       },
       "id": "e3e855cb-3baa-5897-8916-de869a050527",
       "name": "Map label names to IDs",
@@ -264,14 +264,14 @@
       "main": [
         [
           {
-            "node": "Triage with Claude",
+            "node": "Triage with Gemini",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Triage with Claude": {
+    "Triage with Gemini": {
       "main": [
         [
           {

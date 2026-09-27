@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Record the README screenshots in docs/media by driving the running app in headless Chromium.
 
-    triage serve &                               # MAIL_PROVIDER=demo; AI_PROVIDER=mock or claude
+    triage serve &                               # MAIL_PROVIDER=demo; AI_PROVIDER=mock or gemini
     python scripts/capture_media.py              # APP_URL defaults to http://localhost:8000
 
 It resets the demo mailbox, captures the inbox before triage, presses "Check inbox now", then

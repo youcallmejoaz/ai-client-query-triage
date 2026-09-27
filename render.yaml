@@ -15,7 +15,7 @@ services:
         value: demo
       - key: AI_PROVIDER
         value: mock
-      - key: ANTHROPIC_API_KEY
+      - key: GEMINI_API_KEY
         sync: false
       - key: PUBLIC_URL
         sync: false

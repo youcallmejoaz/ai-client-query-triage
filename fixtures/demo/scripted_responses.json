@@ -1,5 +1,5 @@
 {
-  "_comment": "Hand-written stand-in responses for the demo emails (AI_PROVIDER=mock). They follow the same schemas Claude fills in production, and the drafts may only cite sources the pipeline actually retrieves: tests/test_demo_fixtures.py checks that every citation survives validation.",
+  "_comment": "Hand-written stand-in responses for the demo emails (AI_PROVIDER=mock). They follow the same schemas Gemini fills in production, and the drafts may only cite sources the pipeline actually retrieves: tests/test_pipeline.py checks that every citation survives validation.",
   "demo-e01": {
     "classification": {
       "category": "technical_issue",
