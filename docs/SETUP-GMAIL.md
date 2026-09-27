@@ -44,8 +44,30 @@ access to.
    TEAM_DOMAINS=yourcompany.com
    ```
 
-On a server (Render, Docker), copy `gmail-token.json` onto a persistent disk
-and point `GMAIL_TOKEN_FILE` at it.
+### Running it on a server (Render, Docker)
+
+The sign-in in step 4 opens a browser, so it can't run on the server. Run it
+on your own computer, then copy the token to the server:
+
+- **Render:** go to the service → **Environment** → **Secret Files** → **Add
+  Secret File**. Name it `gmail-token.json` and paste the file's contents.
+  Then set `GMAIL_TOKEN_FILE=/etc/secrets/gmail-token.json`.
+- **Docker:** mount `secrets/` into the container (docker-compose already
+  does) and set `GMAIL_TOKEN_FILE=/app/secrets/gmail-token.json`.
+
+The server refreshes the access token itself; the file can be read-only.
+
+### Personal Gmail accounts (@gmail.com)
+
+- Use Option A (OAuth). Option B needs Google Workspace.
+- An OAuth app left in **Testing** issues refresh tokens that expire after
+  **7 days**, after which the service can no longer read the mailbox. For
+  anything longer than a trial, go to **OAuth consent screen → Publish app**,
+  then run `triage gmail-auth` again. Google shows an "unverified app" warning
+  during your own sign-in; that is expected for an app only you use.
+- Do **not** put `gmail.com` in `TEAM_DOMAINS`. Every sender from that domain
+  would then be treated as your own team and skipped. Leave `TEAM_DOMAINS`
+  empty; replies you send from the mailbox are still recognised.
 
 ## Option B: Workspace service account with domain-wide delegation
 

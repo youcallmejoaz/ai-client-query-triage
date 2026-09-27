@@ -314,7 +314,12 @@ def load_credentials(settings: Settings) -> Any:
     credentials = Credentials.from_authorized_user_file(str(token_file), SCOPES)
     if credentials.expired and credentials.refresh_token:
         credentials.refresh(Request())
-        token_file.write_text(credentials.to_json(), encoding="utf-8")
+        try:
+            token_file.write_text(credentials.to_json(), encoding="utf-8")
+        except OSError as exc:
+            # Read-only mounts (e.g. Render Secret Files) are fine: the refresh token in the file keeps
+            # working and the Google client refreshes the access token in memory as needed.
+            log.info("Could not save the refreshed Gmail token to %s: %s", token_file, exc)
     return credentials
 
 

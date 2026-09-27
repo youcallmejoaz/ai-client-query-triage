@@ -340,3 +340,41 @@ def test_extract_body_prefers_plain_text() -> None:
         ],
     }
     assert extract_body(payload) == ("Plain", [])
+
+
+def test_expired_token_on_a_read_only_mount_still_loads(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json as _json
+    from pathlib import Path
+
+    from google.oauth2.credentials import Credentials
+
+    from triage.config import Settings
+    from triage.mail.gmail import load_credentials
+
+    token = tmp_path / "gmail-token.json"
+    token.write_text(
+        _json.dumps(
+            {
+                "token": "old-access-token",
+                "refresh_token": "refresh-token",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "client_id": "id.apps.googleusercontent.com",
+                "client_secret": "secret",
+                "scopes": ["https://www.googleapis.com/auth/gmail.modify"],
+                "expiry": "2020-01-01T00:00:00Z",
+            }
+        )
+    )
+    refreshed: list[bool] = []
+    monkeypatch.setattr(Credentials, "refresh", lambda self, request: refreshed.append(True))
+
+    def read_only(self: Path, *args: Any, **kwargs: Any) -> int:  # like /etc/secrets on Render
+        raise PermissionError(30, "Read-only file system", str(self))
+
+    monkeypatch.setattr(Path, "write_text", read_only)
+    settings = Settings(_env_file=None, gmail_token_file=token)  # type: ignore[call-arg]
+    credentials = load_credentials(settings)
+    assert refreshed == [True]
+    assert credentials.refresh_token == "refresh-token"
