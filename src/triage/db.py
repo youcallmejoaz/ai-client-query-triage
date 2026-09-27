@@ -121,6 +121,20 @@ CREATE TABLE IF NOT EXISTS audit (
   detail   TEXT NOT NULL DEFAULT '{}'
 );
 
+-- Survive "Reset demo": the app's own secret and connected mail accounts.
+CREATE TABLE IF NOT EXISTS app_secrets (
+  name       TEXT PRIMARY KEY,
+  value      TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS mail_accounts (
+  provider     TEXT PRIMARY KEY,               -- gmail
+  account      TEXT NOT NULL,                  -- the connected address
+  token        TEXT NOT NULL,                  -- OAuth token JSON, encrypted with a key derived from SECRET_KEY
+  connected_at TEXT NOT NULL,
+  connected_by TEXT
+);
+
 CREATE TABLE IF NOT EXISTS kb_articles (
   id       TEXT PRIMARY KEY,
   title    TEXT NOT NULL,

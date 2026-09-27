@@ -11,7 +11,10 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
 import logging
+import os
+import secrets
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -25,12 +28,13 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from .. import connections
 from ..ai.base import AssistantError, AssistantRefusal
 from ..config import Settings, get_settings
 from ..digest import build_digest, digest_message
 from ..mail.demo import DemoMailbox
 from ..models import CATEGORIES, CATEGORY_LABELS, OPEN_STATUSES, URGENCIES
-from ..pipeline import PollReport, Services, process_inbox, regenerate_draft, triage_email
+from ..pipeline import PollReport, Services, mark_disconnected, process_inbox, regenerate_draft, triage_email
 from ..store import (
     audit,
     audit_for,
@@ -97,7 +101,8 @@ def auth_problem(settings: Settings) -> str | None:
 
 
 def csrf_token(settings: Settings) -> str:
-    return hmac.new(settings.secret_key.encode(), b"triage-csrf", hashlib.sha256).hexdigest()[:32]
+    key = settings.secret_key or ""
+    return hmac.new(key.encode(), b"triage-csrf", hashlib.sha256).hexdigest()[:32]
 
 
 def check_csrf(settings: Settings, token: str) -> None:
@@ -186,7 +191,12 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
 
         services = build_services(settings)
     svc = services
+    if not settings.secret_key:
+        settings = connections.ensure_secret_key(settings, svc.db)
     templates = build_templates(settings)
+    storage_kind, storage_detail = connections.storage_status(settings)
+    if storage_kind == "ephemeral":
+        log.warning(storage_detail)
     if isinstance(svc.mail, DemoMailbox):
         with svc.db.session() as conn:
             empty = conn.execute("SELECT COUNT(*) FROM demo_messages").fetchone()[0] == 0
@@ -247,7 +257,10 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
         base = {
             "now": now,
             "open_count": counts.get("open", 0),
-            "mail_provider": svc.mail.name if svc.mail else "none",
+            "mail_provider": svc.mail.name if svc.mail else settings.mail_provider,
+            "mailbox_address": svc.mail.mailbox_address if svc.mail else None,
+            "mail_error": svc.mail_error,
+            "storage_warning": storage_detail if storage_kind == "ephemeral" else None,
             "demo": svc.mail is not None and svc.mail.name == "demo",
             "path": request.url.path,
         }
@@ -301,13 +314,130 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
             flash=flash,
         )
 
+    def poll_now() -> tuple[PollReport | None, str]:
+        """Run a poll; if the mailbox isn't usable, say why instead of failing."""
+        if svc.mail is None:
+            return None, svc.mail_error or "No mailbox is connected."
+        try:
+            report = process_inbox(svc)
+        except Exception as exc:
+            if not connections.is_auth_failure(exc):
+                raise
+            mark_disconnected(svc)
+            return None, svc.mail_error or str(exc)
+        return report, poll_message(report)
+
     @app.post("/poll")
     def poll(request: Request, csrf: str = Form("")) -> RedirectResponse:
         check_csrf(settings, csrf)
-        if svc.mail is None:
-            raise HTTPException(400, "No mailbox is configured")
-        report = process_inbox(svc)
-        return RedirectResponse("/?" + urlencode({"flash": poll_message(report)}), status_code=303)
+        _, message = poll_now()
+        return RedirectResponse("/?" + urlencode({"flash": message}), status_code=303)
+
+    # ------------------------------------------------------------------ settings and Connect Gmail
+
+    @app.get("/settings", response_class=HTMLResponse)
+    def settings_page(request: Request, flash: str = "") -> HTMLResponse:
+        stored = None
+        with svc.db.session() as conn:
+            row = conn.execute(
+                "SELECT account, connected_at, connected_by FROM mail_accounts WHERE provider = 'gmail'"
+            ).fetchone()
+            if row:
+                stored = dict(row)
+        return render(
+            request,
+            "settings.html",
+            flash=flash,
+            stored=stored,
+            oauth_problem=connections.oauth_problem(settings),
+            not_connected=connections.NOT_CONNECTED,
+            redirect_uri=connections.redirect_uri(settings),
+            storage_kind=storage_kind,
+            storage_detail=storage_detail,
+            gemini_key_set=bool(
+                settings.gemini_api_key
+                or os.environ.get("GEMINI_API_KEY")
+                or os.environ.get("GOOGLE_API_KEY")
+            ),
+        )
+
+    @app.post("/oauth/google/start")
+    def oauth_start(request: Request, csrf: str = Form("")) -> RedirectResponse:
+        check_csrf(settings, csrf)
+        problem = connections.oauth_problem(settings)
+        if problem:
+            return RedirectResponse("/settings?" + urlencode({"flash": problem}), status_code=303)
+        state = secrets.token_urlsafe(24)
+        verifier = secrets.token_urlsafe(64)
+        response = RedirectResponse(connections.authorization_url(settings, state, verifier), status_code=303)
+        response.set_cookie(
+            connections.OAUTH_COOKIE,
+            connections.sign_cookie(settings, {"state": state, "verifier": verifier}),
+            max_age=connections.OAUTH_COOKIE_MAX_AGE,
+            httponly=True,
+            samesite="lax",  # sent on Google's top-level redirect back to us
+            secure=settings.public_url.startswith("https://"),
+            path="/oauth/google",
+        )
+        return response
+
+    @app.get("/oauth/google/callback")
+    def oauth_callback(
+        request: Request, state: str = "", code: str = "", error: str = ""
+    ) -> RedirectResponse:
+        def done(message: str) -> RedirectResponse:
+            response = RedirectResponse("/settings?" + urlencode({"flash": message}), status_code=303)
+            response.delete_cookie(connections.OAUTH_COOKIE, path="/oauth/google")
+            return response
+
+        if error:
+            return done(f"Google sign-in was not completed ({error}).")
+        saved = connections.read_cookie(settings, request.cookies.get(connections.OAUTH_COOKIE))
+        if not saved or not state or not hmac.compare_digest(saved.get("state", ""), state) or not code:
+            return done("The sign-in link expired or didn't match. Press Connect Gmail again.")
+        try:
+            credentials = connections.exchange_code(settings, code, state, saved["verifier"])
+            account = connections.gmail_address(credentials)
+        except Exception as exc:
+            log.warning("Google sign-in failed: %s", exc)
+            return done(f"Google sign-in failed: {exc}")
+        if not credentials.refresh_token:
+            return done(
+                "Google didn't return a refresh token. Remove the app's access in your Google "
+                "account settings, then press Connect Gmail again."
+            )
+        token = json.loads(credentials.to_json())
+        connections.save_account(svc.db, settings, "gmail", account, token, request.state.user)
+        with svc.db.session() as conn:
+            audit(conn, request.state.user, "mailbox.connected", None, at=svc.clock(), account=account)
+        if settings.mail_provider == "gmail":
+            from ..mail.gmail import GmailMailbox
+
+            svc.mail = GmailMailbox.from_credentials(credentials, settings, account)
+            svc.mail_error = None
+            return done(
+                f"Connected to {account}. New mail is checked every "
+                f"{settings.poll_seconds // 60 or 1} minutes, or press Check inbox now."
+            )
+        return done(f"Saved the connection to {account}. Set MAIL_PROVIDER=gmail to start using it.")
+
+    @app.post("/settings/mailbox/disconnect")
+    def mailbox_disconnect(request: Request, csrf: str = Form("")) -> RedirectResponse:
+        check_csrf(settings, csrf)
+        try:
+            stored = connections.load_account(svc.db, settings, "gmail")
+        except connections.TokenUnreadable:
+            stored = None
+        if stored:
+            connections.revoke(stored.token)
+        account = connections.delete_account(svc.db, "gmail")
+        with svc.db.session() as conn:
+            audit(conn, request.state.user, "mailbox.disconnected", None, at=svc.clock(), account=account)
+        if settings.mail_provider == "gmail":
+            svc.mail = None
+            svc.mail_error = connections.NOT_CONNECTED
+        message = f"Disconnected {account}." if account else "No Gmail account was connected."
+        return RedirectResponse("/settings?" + urlencode({"flash": message}), status_code=303)
 
     @app.get("/queries/{query_id}", response_class=HTMLResponse)
     def query_detail(request: Request, query_id: int, flash: str = "") -> HTMLResponse:
@@ -497,6 +627,7 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
 
     @app.get("/api/health")
     def health() -> dict[str, bool]:
+        # Only liveness: a disconnected mailbox must not make Render restart the service in a loop.
         return {"ok": True}
 
     @app.post("/api/triage", response_model=TriageResponse)
@@ -510,10 +641,10 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
 
     @app.post("/api/poll")
     def api_poll() -> dict[str, Any]:
-        if svc.mail is None:
-            raise HTTPException(400, "No mailbox is configured")
-        report = process_inbox(svc)
-        return {**report.as_dict(), "message": poll_message(report)}
+        report, message = poll_now()
+        if report is None:
+            raise HTTPException(409, message)
+        return {**report.as_dict(), "message": message}
 
     @app.get("/api/digest")
     def api_digest(send: bool = False) -> dict[str, Any]:

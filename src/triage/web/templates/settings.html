@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Settings</h1>
+    <p class="sub">Connections and where this app keeps its data. Values come from environment variables; change them in Render (or <code>.env</code>) and redeploy.</p>
+  </div>
+</div>
+{% if flash %}<div class="flash" role="status">{{ icon('check-circle', 16) }} {{ flash }}</div>{% endif %}
+
+<div class="settings-grid">
+  <section class="card">
+    <div class="card-head"><h2>Mailbox</h2><span class="hint">MAIL_PROVIDER={{ settings.mail_provider }}</span></div>
+    <div class="card-body">
+      <div class="status-line">
+        {% if mailbox_address %}
+          <span class="ok">{{ icon('check-circle', 15) }} Connected</span><span>{{ mailbox_address }}</span>
+        {% else %}
+          <span class="warn">{{ icon('alert', 15) }} Not connected</span>
+        {% endif %}
+      </div>
+      {% if mail_error and mail_error != not_connected %}<p class="who-sub" style="margin-bottom: 12px">{{ mail_error }}</p>{% endif %}
+
+      {% if settings.mail_provider == 'gmail' %}
+        {% if stored %}<p class="who-sub" style="margin-bottom: 12px">Connected from this dashboard on {{ stored.connected_at | local }}{% if stored.connected_by %} by {{ stored.connected_by }}{% endif %}.</p>{% endif %}
+        {% if oauth_problem %}
+          <div class="checks">
+            <h3>{{ icon('alert', 14) }} One-time setup in Google Cloud</h3>
+            <ol class="steps">
+              <li>In <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a>, enable the <b>Gmail API</b>.</li>
+              <li><b>OAuth consent screen</b>: choose External, add your Gmail address as a test user, then <b>Publish app</b> so access doesn't expire after 7 days.</li>
+              <li><b>Credentials → Create credentials → OAuth client ID → Web application</b>. Under <i>Authorized redirect URIs</i> add:
+                <code class="copy">{{ redirect_uri }}</code></li>
+              <li>Set <code>GOOGLE_OAUTH_CLIENT_ID</code> and <code>GOOGLE_OAUTH_CLIENT_SECRET</code> in Render, redeploy, and come back here.</li>
+            </ol>
+          </div>
+        {% endif %}
+        <div class="inline-forms">
+          <form method="post" action="/oauth/google/start">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <button class="btn primary" type="submit" {{ 'disabled' if oauth_problem }}>{{ icon('mail', 15) }} {{ 'Reconnect Gmail' if stored else 'Connect Gmail' }}</button>
+          </form>
+          {% if stored %}
+          <form method="post" action="/settings/mailbox/disconnect" data-confirm="Disconnect {{ stored.account }}? The assistant stops reading this mailbox until you connect again.">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <button class="btn" type="submit">Disconnect</button>
+          </form>
+          {% endif %}
+        </div>
+        {% if not oauth_problem %}<p class="who-sub" style="margin-top: 10px">Google asks for permission to read, label and create drafts in the mailbox. The assistant never sends email. Redirect URI in use: <code>{{ redirect_uri }}</code></p>{% endif %}
+      {% elif settings.mail_provider == 'graph' %}
+        <p>Microsoft 365 connects with an app registration configured by environment variables (<code>GRAPH_*</code>); see <code>docs/SETUP-M365.md</code>.</p>
+      {% else %}
+        <p>The demo mailbox is in use. To triage a real inbox, set <code>MAIL_PROVIDER=gmail</code> (then connect here) or <code>graph</code>.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>AI</h2><span class="hint">AI_PROVIDER={{ settings.ai_provider }}</span></div>
+    <div class="card-body">
+      <dl class="facts">
+        {% if settings.ai_provider == 'gemini' %}
+        <dt>Model</dt><dd>{{ settings.gemini_model }}</dd>
+        <dt>API key</dt><dd>{% if gemini_key_set %}<span class="ok">Set</span>{% else %}<span class="warn">Missing: set GEMINI_API_KEY</span>{% endif %}</dd>
+        <dt>Thinking</dt><dd>{{ settings.triage_thinking }} to classify, {{ settings.draft_thinking }} to draft</dd>
+        {% else %}
+        <dt>Mode</dt><dd>Scripted stand-in (no API calls). Set <code>AI_PROVIDER=gemini</code> and <code>GEMINI_API_KEY</code> to use Gemini.</dd>
+        {% endif %}
+      </dl>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Storage</h2><span class="hint">DATABASE_PATH={{ settings.database_path }}</span></div>
+    <div class="card-body">
+      <div class="status-line">
+        {% if storage_kind == 'persistent' %}<span class="ok">{{ icon('check-circle', 15) }} Persistent</span>
+        {% elif storage_kind == 'ephemeral' %}<span class="warn">{{ icon('alert', 15) }} Not persistent</span>
+        {% else %}<span>Local file</span>{% endif %}
+        <span class="who-sub">{{ storage_detail }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Schedule and alerts</h2></div>
+    <div class="card-body">
+      <dl class="facts">
+        <dt>Inbox check</dt><dd>{% if settings.scheduler_enabled %}Every {{ settings.poll_seconds }} seconds{% else %}Off (SCHEDULER_ENABLED=false): use Check inbox now, cron or n8n{% endif %}</dd>
+        <dt>Daily summary</dt><dd>{{ settings.digest_time }} ({{ settings.digest_days }}, {{ settings.timezone }})</dd>
+        <dt>Alerts</dt><dd>{{ {'log': 'Kept in the Alerts page (NOTIFY=log)', 'slack': 'Slack', 'teams': 'Microsoft Teams'}[settings.notify] }}</dd>
+        <dt>Public URL</dt><dd>{{ settings.public_url }}</dd>
+      </dl>
+    </div>
+  </section>
+</div>
+{% endblock %}

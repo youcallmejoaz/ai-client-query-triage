@@ -60,6 +60,7 @@ class GraphMailbox:
         client: httpx.Client | None = None,
     ) -> None:
         self.mailbox = mailbox
+        self.mailbox_address = mailbox
         self.team_domains = team_domains
         self.token_provider = token_provider
         self.client = client or httpx.Client(base_url=GRAPH_URL, timeout=30)

@@ -9,12 +9,16 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src ./src
 COPY fixtures ./fixtures
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN pip install -e . \
  && useradd --create-home --uid 10001 app \
  && mkdir -p /app/data /app/secrets \
- && chown app /app/data
+ && chown app /app/data \
+ && chmod +x /usr/local/bin/docker-entrypoint.sh
 
-USER app
+# The entrypoint starts as root only to make /app/data writable (a Render disk is mounted there,
+# owned by root), then runs the app as the unprivileged "app" user.
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s \
   CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://127.0.0.1:{os.environ.get(\"PORT\", \"8000\")}/api/health')"

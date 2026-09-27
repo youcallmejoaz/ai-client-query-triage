@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "apscheduler>=3.11,<4",
+  "cryptography>=42",
   "fastapi>=0.120",
   "google-api-python-client>=2.150",
   "google-auth>=2.35",
@@ -69,5 +70,5 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 # google-auth ships partial type hints; its constructors are untyped.
-module = ["triage.mail.gmail"]
+module = ["triage.mail.gmail", "triage.connections"]
 disallow_untyped_calls = false

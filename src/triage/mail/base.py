@@ -15,6 +15,10 @@ from typing import Protocol
 from ..models import InboundEmail
 
 
+class MailboxNotConnected(Exception):
+    """The mailbox has not been authorised yet (or access was revoked). The app keeps running."""
+
+
 @dataclass(frozen=True)
 class DraftRef:
     draft_id: str
@@ -25,6 +29,8 @@ class DraftRef:
 
 class MailProvider(Protocol):
     name: str
+    # The shared inbox's own address: mail from it is ours, and drafts are written from it.
+    mailbox_address: str
 
     def list_new(self, since: datetime, limit: int) -> list[InboundEmail]:
         """Inbound messages received since `since` that are not yet labelled AI/Triaged, oldest first."""

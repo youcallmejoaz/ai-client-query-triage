@@ -91,4 +91,12 @@ For an excluded email:
   git-ignored.
 - A Gmail OAuth token or a service account with domain-wide delegation grants
   mailbox access: store it like a password.
+- A connection made with the dashboard's **Connect Gmail** button is stored in
+  the app's database, encrypted (Fernet) with a key derived from `SECRET_KEY`.
+  - The sign-in uses the authorization-code flow with PKCE and a signed,
+    short-lived state cookie.
+  - **Disconnect** revokes the access at Google and deletes the stored copy.
+  - If `SECRET_KEY` is not set, the app generates one and keeps it in the same
+    database. Set `SECRET_KEY` explicitly (the Render Blueprint does), so that a
+    copy of the database alone can't be used to read the token.
 - Rotate the Graph client secret before it expires.

@@ -15,39 +15,74 @@ sending. So for Gmail the no-send guarantee rests on this code and its tests,
 not on the permission. Microsoft 365 can enforce it at the permission level;
 see [SETUP-M365.md](SETUP-M365.md).
 
-## Option A: OAuth for a single mailbox (simplest)
+## Option A: Connect Gmail from the dashboard (recommended, works on Render)
 
-Use this when the shared inbox is an ordinary account, such as a Workspace
-user `support@yourcompany.com` that the team signs in to or has delegated
-access to.
+Everything happens in the browser: no command line, no token file.
 
 1. In [Google Cloud Console](https://console.cloud.google.com/), create a
    project and enable the **Gmail API**.
-2. Under **APIs & Services → OAuth consent screen**, choose **Internal** for
-   Workspace, or **External** in testing mode with the mailbox added as a test
-   user. Add the `gmail.modify` scope.
-3. Under **Credentials → Create credentials → OAuth client ID**, choose
-   **Desktop app**. Download the JSON file to `secrets/gmail-client.json`.
-4. Run this and sign in **as the shared mailbox**:
+2. Under **APIs & Services → OAuth consent screen**:
+   - choose **Internal** for Google Workspace, or **External** for a personal
+     @gmail.com account;
+   - add the `gmail.modify` scope;
+   - for External, add the mailbox's address as a test user, then press
+     **Publish app**. An app left in Testing issues access that expires after
+     7 days.
+3. Under **Credentials → Create credentials → OAuth client ID**, choose **Web
+   application**. Under **Authorized redirect URIs** add your app's callback:
+
+   ```
+   https://<your-service>.onrender.com/oauth/google/callback
+   ```
+
+   The dashboard's **Settings** page shows the exact address to paste. It is
+   built from `PUBLIC_URL`, which on Render defaults to the service's own URL.
+4. Set these environment variables (in Render: **Environment**), then deploy:
+
+   ```
+   MAIL_PROVIDER=gmail
+   GOOGLE_OAUTH_CLIENT_ID=<client id>
+   GOOGLE_OAUTH_CLIENT_SECRET=<client secret>
+   ```
+
+5. Open the dashboard → **Settings** → **Connect Gmail**, and sign in as the
+   mailbox. For a personal account, Google shows an "unverified app" warning;
+   choose **Advanced → Go to …**. That is expected for an app only you use.
+
+The app stores the connection in its own database, encrypted with a key
+derived from `SECRET_KEY`. It reconnects by itself after restarts, as long as
+the database is on a persistent disk (see `render.yaml`) and `SECRET_KEY`
+stays the same. Until the mailbox is connected, the dashboard runs normally
+and shows a "not connected" banner. If Google later revokes access, the
+banner comes back and asks you to connect again.
+**Disconnect** on the Settings page revokes the access at Google and deletes
+the stored copy.
+
+The mailbox's own address is taken from the connected account, so
+`MAILBOX_ADDRESS` doesn't need to be set.
+
+## Option A2: OAuth from the command line (a token file)
+
+Use this if you'd rather not expose the dashboard's callback URL, or for
+local development.
+
+1. Follow steps 1–2 above, but in step 3 choose **Desktop app** and download
+   the JSON file to `secrets/gmail-client.json`.
+2. Run this on your own computer and sign in **as the shared mailbox**:
 
    ```bash
    MAIL_PROVIDER=gmail triage gmail-auth
    ```
 
-   The token is saved to `secrets/gmail-token.json` and refreshed
-   automatically. Keep it secret: it grants access to the mailbox.
-5. Set in `.env`:
-
-   ```
-   MAIL_PROVIDER=gmail
-   MAILBOX_ADDRESS=support@yourcompany.com
-   TEAM_DOMAINS=yourcompany.com
-   ```
+   The token is saved to `secrets/gmail-token.json`. Keep it secret: it grants
+   access to the mailbox.
+3. Set `MAIL_PROVIDER=gmail`, and `MAILBOX_ADDRESS` to the mailbox's address.
 
 ### Running it on a server (Render, Docker)
 
-The sign-in in step 4 opens a browser, so it can't run on the server. Run it
-on your own computer, then copy the token to the server:
+This applies to the command-line token (Option A2). The sign-in opens a
+browser, so it can't run on the server. Run it on your own computer, then copy
+the token to the server:
 
 - **Render:** go to the service → **Environment** → **Secret Files** → **Add
   Secret File**. Name it `gmail-token.json` and paste the file's contents.
@@ -59,11 +94,11 @@ The server refreshes the access token itself; the file can be read-only.
 
 ### Personal Gmail accounts (@gmail.com)
 
-- Use Option A (OAuth). Option B needs Google Workspace.
+- Use Option A (or A2). Option B needs Google Workspace.
 - An OAuth app left in **Testing** issues refresh tokens that expire after
   **7 days**, after which the service can no longer read the mailbox. For
   anything longer than a trial, go to **OAuth consent screen → Publish app**,
-  then run `triage gmail-auth` again. Google shows an "unverified app" warning
+  then connect again. Google shows an "unverified app" warning
   during your own sign-in; that is expected for an app only you use.
 - Do **not** put `gmail.com` in `TEAM_DOMAINS`. Every sender from that domain
   would then be treated as your own team and skipped. Leave `TEAM_DOMAINS`

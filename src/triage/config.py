@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import secrets
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEMO_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "demo"
@@ -20,7 +20,9 @@ class Settings(BaseSettings):
 
     app_env: Literal["development", "production"] = "development"
     database_path: Path = Path("data/triage.db")
-    public_url: str = "http://localhost:8000"
+    # Base URL for links in drafts, alerts and the Google sign-in callback. On Render it defaults to
+    # the service URL (RENDER_EXTERNAL_URL), so it only needs setting for a custom domain.
+    public_url: str = ""
 
     # Which mailbox and which model back the pipeline.
     mail_provider: Literal["demo", "gmail", "graph"] = "demo"
@@ -73,19 +75,31 @@ class Settings(BaseSettings):
     basic_auth_password: str | None = None
     api_key: str | None = None
     auth_disabled: bool = False
-    secret_key: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
+    # Signs form tokens and encrypts the stored Gmail token. If unset, one is generated once and kept in
+    # the database (see connections.ensure_secret_key).
+    secret_key: str | None = None
 
     # Gmail
     gmail_client_secrets_file: Path = Path("secrets/gmail-client.json")
     gmail_token_file: Path = Path("secrets/gmail-token.json")
     gmail_service_account_file: Path | None = None
     gmail_delegated_user: str | None = None
+    # A Google OAuth client of type "Web application", for the dashboard's Connect Gmail button.
+    google_oauth_client_id: str | None = None
+    google_oauth_client_secret: str | None = None
 
     # Microsoft Graph (Microsoft 365 shared mailbox)
     graph_tenant_id: str | None = None
     graph_client_id: str | None = None
     graph_client_secret: str | None = None
     graph_mailbox: str | None = None
+
+    @model_validator(mode="after")
+    def _default_public_url(self) -> Settings:
+        if not self.public_url:
+            self.public_url = os.environ.get("RENDER_EXTERNAL_URL") or "http://localhost:8000"
+        self.public_url = self.public_url.rstrip("/")
+        return self
 
     @property
     def team_domain_list(self) -> list[str]:

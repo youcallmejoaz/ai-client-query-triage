@@ -98,6 +98,19 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .nav .count { background: var(--surface-3); color: var(--text-2); border-radius: 999px; font-size: 11.5px; padding: 0 7px; font-weight: 600; }
 .mailbox-pill { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; white-space: nowrap; }
 .mailbox-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: #22a06b; box-shadow: 0 0 0 3px rgba(34, 160, 107, .15); }
+.mailbox-pill .dot.off { background: var(--high); box-shadow: 0 0 0 3px color-mix(in srgb, var(--high) 20%, transparent); }
+.banner { display: flex; align-items: center; gap: 10px; background: var(--high-bg); color: var(--text); border: 1px solid color-mix(in srgb, var(--high) 35%, transparent); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 18px; }
+.banner svg { color: var(--high); flex: none; }
+.banner span { flex: 1; }
+.banner.subtle { background: var(--surface-2); border-color: var(--border); }
+.settings-grid { display: grid; gap: 16px; max-width: 860px; }
+.status-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.ok { color: var(--low); font-weight: 600; }
+.warn { color: var(--high); font-weight: 600; }
+.copy { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 9px; display: block; overflow-x: auto; white-space: nowrap; margin: 6px 0 10px; user-select: all; }
+.steps { margin: 6px 0 0; padding-left: 20px; }
+.steps li { margin: 5px 0; }
+.inline-forms { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .page { max-width: 1280px; margin: 0 auto; padding: 28px 24px 48px; }
 .footer { max-width: 1280px; margin: 0 auto; padding: 0 24px 32px; color: var(--muted); font-size: 12.5px; display: flex; gap: 8px; align-items: center; }

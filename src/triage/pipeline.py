@@ -20,7 +20,17 @@ from .config import Settings
 from .context.clients import ClientDirectory, client_sources
 from .context.knowledge import KnowledgeSource
 from .db import Database
-from .mail.base import DRAFT_READY, EXCLUDED, NEEDS_HUMAN, NO_REPLY, TRIAGED, DraftRef, MailProvider, label
+from .mail.base import (
+    DRAFT_READY,
+    EXCLUDED,
+    NEEDS_HUMAN,
+    NO_REPLY,
+    TRIAGED,
+    DraftRef,
+    MailboxNotConnected,
+    MailProvider,
+    label,
+)
 from .models import (
     CATEGORY_LABELS,
     Citation,
@@ -71,6 +81,8 @@ class Services:
     router: Router
     notifier: Notifier
     clock: Callable[[], datetime] = utcnow
+    # Why there is no mailbox (not connected yet, access revoked); shown in the dashboard.
+    mail_error: str | None = None
 
 
 @dataclass
@@ -108,10 +120,11 @@ class PollReport:
 # ------------------------------------------------------------------ helpers
 
 
-def is_outbound(email: InboundEmail, settings: Settings) -> bool:
+def is_outbound(email: InboundEmail, settings: Settings, mailbox_address: str | None = None) -> bool:
     sender = email.sender.email.lower()
     domain = sender.rpartition("@")[2]
-    return sender == settings.mailbox_address.lower() or domain in settings.team_domain_list
+    ours = {settings.mailbox_address.lower(), (mailbox_address or "").lower()} - {""}
+    return sender in ours or domain in settings.team_domain_list
 
 
 def automated_reason(email: InboundEmail) -> str | None:
@@ -624,7 +637,7 @@ def triage_email(
 def process_inbox(svc: Services) -> PollReport:
     """Triage every new message in the mailbox, then close queries that were answered."""
     if svc.mail is None:
-        raise RuntimeError("No mailbox configured")
+        raise MailboxNotConnected(svc.mail_error or "No mailbox is connected")
     report = PollReport()
     if not _poll_lock.acquire(blocking=False):
         log.info("A poll is already running; skipping this one")
@@ -635,7 +648,7 @@ def process_inbox(svc: Services) -> PollReport:
         messages = mail.list_new(since, svc.settings.max_messages_per_poll)
         report.fetched = len(messages)
         for email in sorted(messages, key=lambda m: m.received_at):
-            if is_outbound(email, svc.settings):
+            if is_outbound(email, svc.settings, mail.mailbox_address):
                 report.skipped += 1
                 continue
             with svc.db.session() as conn:
@@ -666,6 +679,14 @@ def process_inbox(svc: Services) -> PollReport:
     finally:
         _poll_lock.release()
     return report
+
+
+def mark_disconnected(svc: Services) -> None:
+    """The mailbox's credentials stopped working: stop using it and tell the dashboard why."""
+    from .connections import auth_failure_message
+
+    svc.mail = None
+    svc.mail_error = auth_failure_message(svc.settings)
 
 
 def sync_replies(svc: Services) -> int:

@@ -10,7 +10,7 @@ It never sends email. Replies are always sent by your team from Gmail or Outlook
 ![Gmail](https://img.shields.io/badge/Gmail%20API-supported-ea4335?logo=gmail&logoColor=white)
 ![Microsoft 365](https://img.shields.io/badge/Microsoft%20Graph-supported-0078d4)
 ![n8n](https://img.shields.io/badge/n8n-workflows-ea4b71?logo=n8n&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-90%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-101%20passing-2ea44f)
 
 ## The problem
 
@@ -271,9 +271,18 @@ the full list. The main ones:
 ## Deploy
 
 - **Docker:** `docker compose up`. Add `--profile n8n` to run n8n next to it.
-- **Render:** [`render.yaml`](render.yaml) deploys the demo behind a login.
-  Set `BASIC_AUTH_USER`/`BASIC_AUTH_PASSWORD`, then switch `MAIL_PROVIDER` and
-  `AI_PROVIDER` to go live.
+- **Render:** [`render.yaml`](render.yaml) is a Blueprint for one web service
+  with a 1 GB persistent disk, where the app keeps its SQLite database.
+  - Render asks for the login, `MAIL_PROVIDER`, `AI_PROVIDER` and keys when
+    you create it.
+  - For your own Gmail inbox, set `MAIL_PROVIDER=gmail` and the Google OAuth
+    client, deploy, then press **Connect Gmail** on the **Settings** page.
+    See [docs/SETUP-GMAIL.md](docs/SETUP-GMAIL.md).
+  - The app starts even when the mailbox isn't connected yet, and shows what
+    is missing.
+  - A persistent disk needs a paid instance type. On the free plan the
+    database, including the Gmail connection, resets on every deploy or
+    restart; the Settings page warns about this.
 - In production (`APP_ENV=production`) the dashboard refuses to start without
   a login. `/api/*` accepts the `X-API-Key` header or the login.
 

@@ -17,15 +17,22 @@
         <a href="/digest" class="{{ 'active' if path == '/digest' }}">Daily summary</a>
         <a href="/outbox" class="{{ 'active' if path == '/outbox' }}">Alerts</a>
         {% if demo %}<a href="/demo/inbox" class="{{ 'active' if path.startswith('/demo') }}">Demo mailbox</a>{% endif %}
+        <a href="/settings" class="{{ 'active' if path == '/settings' }}">Settings</a>
       </nav>
       <div class="mailbox-pill" title="Mailbox and model in use">
-        <span class="dot"></span>{{ settings.mailbox_address }}
+        <span class="dot {{ 'off' if not mailbox_address }}"></span>{{ mailbox_address or 'Mailbox not connected' }}
         · {{ {'demo': 'Demo mailbox', 'gmail': 'Gmail', 'graph': 'Outlook'}.get(mail_provider, mail_provider) }}
         · {{ 'Gemini' if settings.ai_provider == 'gemini' else 'Scripted AI' }}
       </div>
     </div>
   </header>
   <main class="page">
+    {% if mail_error and path != '/settings' %}
+    <div class="banner" role="alert">{{ icon('alert', 16) }}<span>{{ mail_error }}</span><a class="btn small" href="/settings">Open Settings</a></div>
+    {% endif %}
+    {% if storage_warning and path != '/settings' %}
+    <div class="banner subtle" role="status">{{ icon('alert', 16) }}<span>{{ storage_warning }}</span></div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
   <footer class="footer">{{ icon('send-off', 14) }} Drafts only. This assistant never sends email: your team reviews each draft and sends it from {{ 'Outlook' if mail_provider == 'graph' else 'Gmail' if mail_provider == 'gmail' else 'the mailbox' }}.</footer>

@@ -1,23 +1,35 @@
 # Render Blueprint: New → Blueprint → pick this repository.
-# A fresh deploy runs the demo (sample inbox, scripted AI) behind a login.
-# Switch MAIL_PROVIDER / AI_PROVIDER and add the Gmail or Microsoft 365 settings to go live.
+#
+# Render asks for the values marked "sync: false" when the Blueprint is created. For the demo, use
+# MAIL_PROVIDER=demo and AI_PROVIDER=mock. For your own Gmail inbox, use MAIL_PROVIDER=gmail,
+# AI_PROVIDER=gemini, fill in the Google OAuth client and Gemini key, deploy, then open
+# Settings in the dashboard and press Connect Gmail (see docs/SETUP-GMAIL.md).
+#
+# The app keeps its SQLite database on the disk below: triage history, the Gmail connection and its
+# own secrets. A persistent disk needs a paid instance type (starter or above). On the free plan
+# (remove the disk block and set plan: free) everything resets on each deploy or restart, and the
+# service sleeps when idle, so the inbox is only checked while someone has the dashboard open.
 services:
   - type: web
     name: client-query-triage
     runtime: docker
     region: frankfurt
     plan: starter
+    # One instance only: the inbox poller and the SQLite database live in this process.
+    numInstances: 1
     healthCheckPath: /api/health
     envVars:
       - key: APP_ENV
         value: production
       - key: MAIL_PROVIDER
-        value: demo
+        sync: false
       - key: AI_PROVIDER
-        value: mock
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
-      - key: PUBLIC_URL
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
         sync: false
       - key: BASIC_AUTH_USER
         sync: false
@@ -33,7 +45,7 @@ services:
         value: log
       - key: TIMEZONE
         value: Europe/London
-    # Keep the database across deploys (paid plans). Without a disk, a deploy resets the demo.
+      # PUBLIC_URL is optional: it defaults to the service's own URL (RENDER_EXTERNAL_URL).
     disk:
       name: triage-data
       mountPath: /app/data

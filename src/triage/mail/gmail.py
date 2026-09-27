@@ -22,7 +22,7 @@ from urllib.parse import quote
 
 from ..config import Settings
 from ..models import InboundEmail, ThreadMessage
-from .base import TRIAGED, DraftRef
+from .base import TRIAGED, DraftRef, MailboxNotConnected
 from .parsing import (
     KEPT_HEADERS,
     format_address,
@@ -96,11 +96,16 @@ class GmailMailbox:
 
     @classmethod
     def from_settings(cls, settings: Settings) -> GmailMailbox:
+        """Service account or token file (the command-line setup). The dashboard's Connect Gmail
+        button stores its token in the database instead; see connections.py."""
+        return cls.from_credentials(load_credentials(settings), settings, settings.mailbox_address)
+
+    @classmethod
+    def from_credentials(cls, credentials: Any, settings: Settings, address: str) -> GmailMailbox:
         from googleapiclient.discovery import build
 
-        credentials = load_credentials(settings)
         service = build("gmail", "v1", credentials=credentials, cache_discovery=False)
-        return cls(service, settings.mailbox_address, settings.team_domain_list)
+        return cls(service, address, settings.team_domain_list)
 
     def _users(self) -> Any:
         return self.service.users()
@@ -308,8 +313,9 @@ def load_credentials(settings: Settings) -> Any:
 
     token_file = settings.gmail_token_file
     if not token_file.exists():
-        raise RuntimeError(
-            f"No Gmail token at {token_file}. Run `triage gmail-auth` first (see docs/SETUP-GMAIL.md)."
+        raise MailboxNotConnected(
+            "Gmail isn't connected yet. Open Settings in the dashboard and press Connect Gmail "
+            "(see docs/SETUP-GMAIL.md)."
         )
     credentials = Credentials.from_authorized_user_file(str(token_file), SCOPES)
     if credentials.expired and credentials.refresh_token:
