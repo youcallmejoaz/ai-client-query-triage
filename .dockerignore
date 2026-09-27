@@ -1,0 +1,11 @@
+.git
+.venv
+.env
+data
+secrets
+docs/media
+n8n-data
+**/__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache

@@ -1,0 +1,349 @@
+{
+  "name": "Inbox triage (Gmail) - drafts only",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Inbox triage (Gmail)\nEvery minute: new mail in the shared inbox is sent to the triage service, which classifies it with Claude, looks up the client and the knowledge base, and writes a cited reply.\n\nThis workflow then **labels** the message, **saves the reply as a draft** in the same thread and **alerts Slack** for urgent or complex queries.\n\n**Nothing is ever sent.** There is no send or reply step; people send from Gmail.\n\nRun *Setup: create Gmail labels* once first.",
+        "height": 300,
+        "width": 520,
+        "color": 5
+      },
+      "id": "d6d6adf9-7793-57c0-bf41-8570ffd8859e",
+      "name": "About this workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "in:inbox -label:ai-triaged -from:me"
+        },
+        "options": {}
+      },
+      "id": "31d889ba-18e5-5917-9e01-2341fae3c3a3",
+      "name": "New email in shared inbox",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        100
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_ME",
+          "name": "Gmail (shared inbox)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://triage:8000/api/triage",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  provider: 'gmail',\n  message_id: $json.id,\n  thread_id: $json.threadId,\n  from: $json.from?.text,\n  reply_to: $json.replyTo?.text ?? null,\n  to: $json.to?.text ?? '',\n  cc: $json.cc?.text ?? '',\n  subject: $json.subject ?? '',\n  text: $json.text ?? '',\n  html: $json.html || null,\n  received_at: $json.date,\n  message_id_header: $json.messageId ?? null,\n  references: $json.references ?? [],\n  headers: $json.headers ?? {}\n}) }}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "7e1aad96-3fa5-5456-a0c1-afbc90b4d505",
+      "name": "Triage with Claude",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        100
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "Triage API key (X-API-Key)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "operation": "getAll",
+        "returnAll": true
+      },
+      "id": "9b825276-7026-5ea6-87ed-3d421129a023",
+      "name": "List Gmail labels",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        480,
+        100
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_ME",
+          "name": "Gmail (shared inbox)"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gmail's API needs label IDs; the triage service returns label names.\nconst byName = Object.fromEntries($('List Gmail labels').all().map((l) => [l.json.name, l.json.id]));\nreturn $('Triage with Claude').all().map((item) => {\n  const r = item.json;\n  return {\n    json: {\n      ...r,\n      labelIds: r.labels.map((name) => byName[name]).filter(Boolean),\n      missingLabels: r.labels.filter((name) => !byName[name]),\n    },\n  };\n});"
+      },
+      "id": "e3e855cb-3baa-5897-8916-de869a050527",
+      "name": "Map label names to IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "addLabels",
+        "messageId": "={{ $json.message_id }}",
+        "labelIds": "={{ $json.labelIds }}"
+      },
+      "id": "0a0e2744-592d-5d5e-b77b-9280bdc115f7",
+      "name": "Add labels",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1000,
+        -80
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_ME",
+          "name": "Gmail (shared inbox)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4a3c9422-280c-5b27-8b3a-7c37023b7d35",
+              "leftValue": "={{ $json.draft }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5e69efce-532e-5383-b146-6f9f11ac2e22",
+      "name": "Draft written?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1000,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "operation": "create",
+        "subject": "={{ $json.draft.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.draft.body_text }}",
+        "options": {
+          "threadId": "={{ $json.draft.thread_id }}",
+          "sendTo": "={{ $json.draft.to }}"
+        }
+      },
+      "id": "48d0a003-f69e-5369-89c2-a0ba98930c50",
+      "name": "Save reply as draft",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1240,
+        100
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_ME",
+          "name": "Gmail (shared inbox)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "88efe80b-a1b9-50e5-9983-1e57d7dd4939",
+              "leftValue": "={{ $json.alert }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "74686e62-ba94-5543-a2aa-8126983ac84b",
+      "name": "Urgent or complex?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1000,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#client-support",
+          "mode": "name"
+        },
+        "messageType": "text",
+        "text": "={{ $json.alert_text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "9de90b8d-eb71-55c0-9560-d8ab7fbc4ddb",
+      "name": "Alert the team in Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1240,
+        280
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "REPLACE_ME",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "New email in shared inbox": {
+      "main": [
+        [
+          {
+            "node": "Triage with Claude",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Triage with Claude": {
+      "main": [
+        [
+          {
+            "node": "List Gmail labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Gmail labels": {
+      "main": [
+        [
+          {
+            "node": "Map label names to IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map label names to IDs": {
+      "main": [
+        [
+          {
+            "node": "Add labels",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Draft written?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Urgent or complex?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft written?": {
+      "main": [
+        [
+          {
+            "node": "Save reply as draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Urgent or complex?": {
+      "main": [
+        [
+          {
+            "node": "Alert the team in Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

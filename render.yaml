@@ -1,0 +1,40 @@
+# Render Blueprint: New → Blueprint → pick this repository.
+# A fresh deploy runs the demo (sample inbox, scripted AI) behind a login.
+# Switch MAIL_PROVIDER / AI_PROVIDER and add the Gmail or Microsoft 365 settings to go live.
+services:
+  - type: web
+    name: client-query-triage
+    runtime: docker
+    region: frankfurt
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: MAIL_PROVIDER
+        value: demo
+      - key: AI_PROVIDER
+        value: mock
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
+      - key: BASIC_AUTH_USER
+        sync: false
+      - key: BASIC_AUTH_PASSWORD
+        sync: false
+      - key: API_KEY
+        generateValue: true
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SCHEDULER_ENABLED
+        value: "true"
+      - key: NOTIFY
+        value: log
+      - key: TIMEZONE
+        value: Europe/London
+    # Keep the database across deploys (paid plans). Without a disk, a deploy resets the demo.
+    disk:
+      name: triage-data
+      mountPath: /app/data
+      sizeGB: 1

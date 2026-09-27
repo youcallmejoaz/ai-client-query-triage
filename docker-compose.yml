@@ -1,0 +1,36 @@
+# docker compose up                  -> dashboard on http://localhost:8000 (demo mailbox, scripted AI)
+# docker compose --profile n8n up    -> also n8n on http://localhost:5678, which reaches the service at http://triage:8000
+services:
+  triage:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_PATH: /app/data/triage.db
+    volumes:
+      - triage-data:/app/data
+      - ./secrets:/app/secrets:ro
+    restart: unless-stopped
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    profiles: ["n8n"]
+    ports:
+      - "5678:5678"
+    environment:
+      GENERIC_TIMEZONE: Europe/London
+      TZ: Europe/London
+      N8N_SECURE_COOKIE: "false"
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - ./n8n:/workflows:ro
+    depends_on:
+      - triage
+    restart: unless-stopped
+
+volumes:
+  triage-data:
+  n8n-data:

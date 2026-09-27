@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, urgency, status_badge, tier, person %}
+{% block title %}Queue{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Client queries</h1>
+    <p class="sub">Classified, routed and drafted. Every reply is reviewed and sent by a person.</p>
+  </div>
+  <div class="actions">
+    {% if demo %}
+    <form method="post" action="/demo/reset" data-confirm="Reset the demo? All triage results are cleared and the demo mailbox is reloaded.">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn ghost" type="submit">Reset demo</button>
+    </form>
+    {% endif %}
+    {% if mail_provider != 'none' %}
+    <form method="post" action="/poll">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn primary" type="submit" data-busy="Checking…">{{ icon('refresh', 15) }} Check inbox now</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{% if flash %}<div class="flash" role="status">{{ icon('check-circle', 16) }} {{ flash }}</div>{% endif %}
+
+<section class="stats" aria-label="Open queries at a glance">
+  <div class="stat"><div class="label">Open</div><div class="value">{{ stats.open }}</div></div>
+  <div class="stat {{ 'alert' if stats.overdue }}"><div class="label"><span class="swatch" style="background: var(--overdue)"></span>Overdue</div><div class="value">{{ stats.overdue }}</div></div>
+  <div class="stat"><div class="label"><span class="swatch" style="background: var(--high)"></span>Due within 4 hours</div><div class="value">{{ stats.soon }}</div></div>
+  <div class="stat"><div class="label"><span class="swatch" style="background: var(--low)"></span>Draft ready</div><div class="value">{{ stats.draft_ready }}</div></div>
+  <div class="stat"><div class="label"><span class="swatch" style="background: var(--violet)"></span>Needs a person</div><div class="value">{{ stats.needs_human }}</div></div>
+  <div class="stat"><div class="label"><span class="swatch" style="background: var(--ink)"></span>Confidential</div><div class="value">{{ stats.excluded }}</div></div>
+</section>
+
+<div class="toolbar">
+  <nav class="tabs" aria-label="Status">
+    {% set q = filters %}
+    <a href="/?status=open" class="{{ 'active' if q.status == 'open' }}">Open<span class="n">{{ stats.open }}</span></a>
+    <a href="/?status=closed" class="{{ 'active' if q.status == 'closed' }}">Closed<span class="n">{{ stats.closed }}</span></a>
+    <a href="/?status=all" class="{{ 'active' if q.status == 'all' }}">All</a>
+  </nav>
+  <form class="filters" method="get" action="/">
+    <input type="hidden" name="status" value="{{ q.status }}">
+    <select name="urgency" data-autosubmit aria-label="Urgency">
+      <option value="">Any urgency</option>
+      {% for u in urgencies %}<option value="{{ u }}" {{ 'selected' if q.urgency == u }}>{{ u | capitalize }}</option>{% endfor %}
+    </select>
+    <select name="category" data-autosubmit aria-label="Category">
+      <option value="">Any category</option>
+      {% for c in categories %}<option value="{{ c }}" {{ 'selected' if q.category == c }}>{{ category_label(c) }}</option>{% endfor %}
+    </select>
+    <select name="assignee" data-autosubmit aria-label="Assigned to">
+      <option value="">Anyone</option>
+      {% for m in team %}<option value="{{ m.key }}" {{ 'selected' if q.assignee == m.key }}>{{ m.name }}</option>{% endfor %}
+    </select>
+    <noscript><button class="btn small" type="submit">Filter</button></noscript>
+  </form>
+</div>
+
+<div class="panel">
+  {% if rows %}
+  <table class="queue">
+    <thead>
+      <tr>
+        <th class="col-urgency">Urgency</th>
+        <th class="col-who">Client</th>
+        <th>Query</th>
+        <th class="col-category">Category</th>
+        <th class="col-assignee">Assigned to</th>
+        <th class="col-due">Reply by</th>
+        <th class="col-status">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr class="{{ 'row-closed' if r.status in ('replied', 'resolved', 'no_reply_needed', 'superseded') }}">
+        <td class="col-urgency">{% if r.status == 'excluded' %}<span class="pill u-none">Unrated</span>{% else %}{{ urgency(r.urgency) }}{% endif %}</td>
+        <td class="col-who">
+          <div class="who">{{ r.client_name or r.sender_name or r.sender_email }}{{ tier(r.client_tier) }}</div>
+          <div class="who-sub">{{ r.sender_name if r.client_name else ('No client record' if not r.client_hint else 'Says: ' ~ r.client_hint) }}</div>
+        </td>
+        <td class="subject">
+          <a href="/queries/{{ r.id }}">{{ r.subject or 'Confidential email' }}</a>
+          <div class="summary">{{ r.summary or ('Not processed by AI: open it in the mailbox.' if r.status == 'excluded' else '') }}</div>
+        </td>
+        <td class="col-category">{% if r.category %}<span class="tag">{{ category_label(r.category) }}</span>{% elif r.status == 'excluded' %}<span class="tag">{{ icon('lock', 11) }}&nbsp;Private</span>{% endif %}</td>
+        <td class="col-assignee">{% if r.assignee_name %}{{ person(r.assignee_name) }}{% endif %}</td>
+        <td class="col-due"><span class="due-{{ r.due.tone }}">{{ r.due.text }}</span>{% if not r.due.text %}<span class="who-sub">{{ ago(r.received_at, now) }}</span>{% endif %}</td>
+        <td class="col-status">{{ status_badge(r.status) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    <strong>{{ 'Nothing waiting' if q.status == 'open' else 'No queries here' }}</strong>
+    {% if demo and stats.open == 0 and stats.closed == 0 %}The demo mailbox has new mail: press <em>Check inbox now</em> to triage it.{% else %}New client emails appear here after the next inbox check.{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

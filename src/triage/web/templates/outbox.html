@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Alerts{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Alerts</h1>
+    <p class="sub">What the assistant posted, or would post, to the team channel: urgent and complex queries, and the daily summary.
+      Channel: <strong>{{ {'slack': 'Slack', 'teams': 'Microsoft Teams', 'log': 'none (NOTIFY=log)'}.get(settings.notify) }}</strong>.</p>
+  </div>
+</div>
+<div class="chat">
+  {% for n in notes %}
+  {% set m = n.message %}
+  <article class="msg">
+    <div class="bot">{{ icon('bot', 20) }}</div>
+    <div>
+      <div class="meta">
+        <strong>Triage assistant</strong><span class="app">APP</span><span>{{ n.created_at | local('%a %H:%M') }}</span>
+        <span class="channel">{{ n.channel | capitalize }} ·
+          {% if n.channel == 'log' %}kept in outbox{% elif n.delivered %}<span class="delivered">delivered</span>{% else %}<span class="undelivered">not delivered: {{ n.error }}</span>{% endif %}
+        </span>
+      </div>
+      <div class="title">{% if m.severity == 'critical' %}🚨{% elif m.severity == 'high' %}⚠️{% elif m.kind == 'digest' %}📊{% endif %} {{ m.title }}</div>
+      <div class="lines">{% if m.mention %}<span class="mention">@{{ m.mention.name }}</span> {% endif %}{{ m.lines | join('\n') }}</div>
+      {% if m.facts %}
+      <div class="fact-grid">{% for f in m.facts %}<div><b>{{ f[0] }}</b>{{ f[1] }}</div>{% endfor %}</div>
+      {% endif %}
+      {% if m.links %}
+      <div class="buttons">{% for l in m.links %}<a class="btn small" href="{{ l[1] }}">{{ l[0] }}</a>{% endfor %}</div>
+      {% endif %}
+    </div>
+  </article>
+  {% else %}
+  <div class="panel empty"><strong>No alerts yet</strong>Urgent or complex queries and the daily summary will appear here.</div>
+  {% endfor %}
+</div>
+{% endblock %}

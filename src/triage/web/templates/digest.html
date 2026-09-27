@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, urgency %}
+{% block title %}Daily summary{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Daily summary</h1>
+    <p class="sub">Open and overdue client queries as of {{ digest.generated_at | local('%A %d %B, %H:%M') }}. Posted to the team channel at {{ settings.digest_time }} ({{ settings.digest_days }}).</p>
+  </div>
+  <form method="post" action="/digest/send">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="btn" type="submit" data-busy="Posting…">{{ icon('bot', 15) }} Post to {{ {'slack': 'Slack', 'teams': 'Teams'}.get(settings.notify, 'the outbox') }} now</button>
+  </form>
+</div>
+{% if flash %}<div class="flash" role="status">{{ icon('check-circle', 16) }} {{ flash }}</div>{% endif %}
+
+<section class="stats">
+  <div class="stat"><div class="label">Open</div><div class="value">{{ digest.open_total }}</div></div>
+  <div class="stat {{ 'alert' if digest.overdue_total }}"><div class="label"><span class="swatch" style="background: var(--overdue)"></span>Overdue</div><div class="value">{{ digest.overdue_total }}</div></div>
+  <div class="stat"><div class="label"><span class="swatch" style="background: var(--high)"></span>Due within 4 hours</div><div class="value">{{ digest.due_next_4h }}</div></div>
+  <div class="stat"><div class="label">New in 24 hours</div><div class="value">{{ digest.new_24h }}</div></div>
+  <div class="stat"><div class="label"><span class="swatch" style="background: var(--low)"></span>Drafted in 24 hours</div><div class="value">{{ digest.drafts_24h }}</div></div>
+  <div class="stat"><div class="label">Answered in 24 hours</div><div class="value">{{ digest.closed_24h }}</div></div>
+</section>
+
+<div class="digest-grid">
+  <section class="card">
+    <div class="card-head"><h2>Longest overdue</h2><span class="hint">{{ digest.overdue_total }} past their reply-by time</span></div>
+    {% if digest.overdue %}
+    <ul class="overdue-list">
+      {% for i in digest.overdue %}
+      <li>
+        <div><a class="who" href="/queries/{{ i.id }}">{{ i.who }}</a> {% if i.urgency %}{{ urgency(i.urgency) }}{% endif %}</div>
+        <div class="late">{{ i.overdue_by }} over</div>
+        <div class="sum">{{ i.summary }}</div>
+        <div class="by">{{ i.assignee or 'Unassigned' }}</div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty"><strong>Nothing overdue</strong>Every open query is within its reply-by time.</div>
+    {% endif %}
+  </section>
+
+  <div class="stack">
+    <section class="card">
+      <div class="card-head"><h2>By person</h2>
+        <div class="legend"><span><i style="background: var(--accent)"></i>Open</span><span><i style="background: var(--overdue)"></i>Overdue</span></div>
+      </div>
+      <div class="card-body bars">
+        {% for name, open, late in digest.by_assignee %}
+        <div class="bar-row">
+          <span class="name">{{ name }}</span>
+          <span class="bar" role="img" aria-label="{{ open }} open, {{ late }} overdue">
+            <span class="late" style="width: {{ (late / max_open * 100) | round(1) }}%"></span>
+            <span class="open" style="width: {{ ((open - late) / max_open * 100) | round(1) }}%"></span>
+          </span>
+          <span class="num">{{ open }}{% if late %} · <span class="due-overdue">{{ late }}</span>{% endif %}</span>
+        </div>
+        {% else %}<p class="who-sub">No open queries.</p>{% endfor %}
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>By category</h2></div>
+      <table class="plain">
+        <thead><tr><th>Category</th><th class="num">Open</th><th class="num">Overdue</th></tr></thead>
+        <tbody>
+          {% for cat, open, late in digest.by_category %}
+          <tr><td>{{ cat }}</td><td class="num">{{ open }}</td><td class="num {{ 'due-overdue' if late }}">{{ late }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </div>
+</div>
+{% endblock %}

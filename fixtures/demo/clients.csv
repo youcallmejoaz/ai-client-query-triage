@@ -1,0 +1,11 @@
+id,name,domains,contacts,tier,plan,account_owner,ai_excluded,status,renewal_date,notes
+acme-logistics,Acme Logistics,acmelogistics.example,,enterprise,Enterprise (420 employees),priya,false,active,2027-03-31,"Weekly payroll every Friday. Uses same-day payment option. Primary contact: Sarah Okafor (Payroll Manager)."
+bluefin-dental,Bluefin Dental Group,bluefindental.example,,growth,Growth (64 employees),tom,false,active,2027-01-15,"Monthly payroll on the 28th. Pays by direct debit."
+copperleaf-cafe,Copperleaf Café,,hello.copperleafcafe@gmail.example,starter,Starter (8 employees),tom,false,active,2026-11-02,"Owner runs payroll herself (Jess Moreno). Writes from a personal address."
+delta-build,Delta Build Co.,deltabuild.example,,enterprise,Enterprise (210 employees),priya,false,active,2026-12-01,"Renewal in December. CFO Mark Ellis raised pricing concerns at the last QBR."
+evergreen-vet,Evergreen Vet Clinic,evergreenvet.example,,growth,Growth (37 employees),tom,false,active,2027-06-30,"Annual plan paid upfront."
+fjord-design,Fjord Design Studio,fjorddesign.example,,starter,Starter (7 employees),tom,false,active,2027-02-14,"Small design agency, growing."
+harrow-pike,Harrow & Pike LLP,harrowpike.example,,enterprise,Enterprise (150 employees),priya,true,active,2027-04-30,"Law firm. Contract excludes AI processing of their correspondence."
+kestrel-retail,Kestrel Retail,kestrelretail.example,,growth,Growth (92 employees),priya,false,at_risk,2026-10-31,"QuickBooks integration. Two sync incidents in September. Renewal 31 October."
+marlow-hotels,Marlow Hotels,marlowhotels.example,,enterprise,Enterprise (640 employees),priya,false,active,2027-05-31,"Group of 9 hotels. Has a DPO: Anna Kowalski."
+orchard-schools,Orchard Schools Trust,orchardschools.example,,growth,Growth (88 employees),tom,false,onboarding,2027-09-01,"Signed in September. First live payroll planned for 28 October."

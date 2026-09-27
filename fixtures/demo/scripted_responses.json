@@ -1,0 +1,471 @@
+{
+  "_comment": "Hand-written stand-in responses for the demo emails (AI_PROVIDER=mock). They follow the same schemas Claude fills in production, and the drafts may only cite sources the pipeline actually retrieves: tests/test_demo_fixtures.py checks that every citation survives validation.",
+  "demo-e01": {
+    "classification": {
+      "category": "technical_issue",
+      "urgency": "critical",
+      "urgency_reason": "Payday is tomorrow and payments for 38 employees were rejected with E-102.",
+      "sentiment": "neutral",
+      "summary": "Weekly payroll run failed with E-102 for 38 employees; payday is tomorrow and they need to know how to pay everyone on time.",
+      "needs_reply": true,
+      "complexity": "simple",
+      "confidence": 0.93,
+      "questions": ["How to make sure the 38 employees are paid on Friday", "Whether the same-day option can still be used tomorrow morning"],
+      "escalation_flags": ["payment_deadline"],
+      "kb_queries": ["E-102 bank details rejected resubmit payments", "same-day faster payments cut-off payday", "support resubmit corrected run on behalf enterprise"],
+      "client_hint": null
+    },
+    "draft": {
+      "body": "Hi Sarah,\n\nThanks for flagging this quickly. Error E-102 means the bank rejected the details for the employees listed in the run report, usually because of a sort code or account number typo. No money has left your account yet.\n\nTo get everyone paid on Friday:\n1. Correct the bank details for the 38 employees under People → Pay details.\n2. Choose \"Resubmit payments\" on the run.\n\nAs an Enterprise client you can use same-day Faster Payments for runs submitted by 11:00 on payday, so resubmitting by 11:00 tomorrow still gets everyone paid on Friday. If you'd prefer, we can resubmit the corrected run for you once you confirm the corrected details in writing.",
+      "citations": [
+        {"source_id": "KB:payroll-run-errors#common-error-codes", "supports": "What E-102 means and how to fix and resubmit"},
+        {"source_id": "KB:payroll-run-errors#payment-cut-off-times", "supports": "Same-day Faster Payments until 11:00 on payday for Enterprise"},
+        {"source_id": "KB:payroll-run-errors#what-support-can-do", "supports": "Support can resubmit a corrected run after written confirmation"},
+        {"source_id": "CLIENT:acme-logistics", "supports": "Acme is on Enterprise and pays weekly on Fridays"}
+      ],
+      "missing_info": [],
+      "confidence": 0.86
+    }
+  },
+  "demo-e02": {
+    "classification": {
+      "category": "technical_issue",
+      "urgency": "critical",
+      "urgency_reason": "Second message within two hours; payday is tomorrow and the Finance Director is asking for confirmation.",
+      "sentiment": "negative",
+      "summary": "Follow-up on the failed run: 31 of 38 bank details fixed; the Finance Director needs confirmation staff will be paid Friday and Sarah asks for a call.",
+      "needs_reply": true,
+      "complexity": "simple",
+      "confidence": 0.94,
+      "questions": ["Will the 38 Leeds staff be paid on Friday?", "Can someone call Sarah on 0113 496 0021?"],
+      "escalation_flags": ["payment_deadline", "executive_or_vip"],
+      "kb_queries": ["E-102 bank details rejected resubmit payments", "same-day faster payments cut-off payday", "support resubmit corrected run on behalf enterprise"],
+      "client_hint": null
+    },
+    "draft": {
+      "body": "Hi Sarah,\n\nThanks for the update, and sorry for the worry this is causing. Yes, there is still time to pay all 38 Leeds staff on Friday.\n\nOnce the remaining 7 employees' bank details are corrected under People → Pay details, choose \"Resubmit payments\" on the run. As an Enterprise client you can use same-day Faster Payments for runs submitted by 11:00 on payday, so resubmitting by 11:00 on Friday still gets everyone paid that day.\n\nIf it helps, we can resubmit the corrected run for you: just reply confirming the corrected details are final. We'll also call you on 0113 496 0021 this morning to talk it through.",
+      "citations": [
+        {"source_id": "KB:payroll-run-errors#common-error-codes", "supports": "Fix bank details under People → Pay details, then resubmit"},
+        {"source_id": "KB:payroll-run-errors#payment-cut-off-times", "supports": "Same-day Faster Payments until 11:00 on payday for Enterprise"},
+        {"source_id": "KB:payroll-run-errors#what-support-can-do", "supports": "Support can resubmit a corrected run after written confirmation"},
+        {"source_id": "CLIENT:acme-logistics", "supports": "Acme is on Enterprise with the same-day payment option"}
+      ],
+      "missing_info": ["Confirm who will call Sarah and when", "Check the bank's rejection report for the 7 employees not yet corrected"],
+      "confidence": 0.84
+    }
+  },
+  "demo-e03": {
+    "classification": {
+      "category": "billing",
+      "urgency": "high",
+      "urgency_reason": "The client reports a duplicate £320 debit and asks for a refund.",
+      "sentiment": "neutral",
+      "summary": "Two £320 direct debits taken on 1 September for one subscription; asks us to refund the duplicate (invoice INV-2026-09-4471).",
+      "needs_reply": true,
+      "complexity": "simple",
+      "confidence": 0.95,
+      "questions": ["Why were there two direct debits on 1 September?", "Can the duplicate be refunded?"],
+      "escalation_flags": [],
+      "kb_queries": ["charged twice duplicate direct debit refund"],
+      "client_hint": null
+    },
+    "draft": {
+      "body": "Hi Raj,\n\nThank you for letting us know, and sorry about this. I've passed the two direct debits from 1 September (£320.00 each, invoice INV-2026-09-4471) to our Billing team to investigate.\n\nIf one of them is a duplicate, Billing will refund it in full to your original payment method within 5 business days of confirming the error, and we'll email you as soon as that's done. You don't need to send anything else for now.",
+      "citations": [
+        {"source_id": "KB:refund-policy#duplicate-or-incorrect-charges", "supports": "Duplicate charges are refunded in full within 5 business days of confirming the error"}
+      ],
+      "missing_info": ["Billing to confirm whether the second debit is a duplicate"],
+      "confidence": 0.9
+    }
+  },
+  "demo-e04": {
+    "classification": {
+      "category": "general_question",
+      "urgency": "low",
+      "urgency_reason": "How-to question; the new starter's first payroll is at month end.",
+      "sentiment": "positive",
+      "summary": "Asks how to add a new barista starting Monday so he is paid at month end, and when his bank details are needed.",
+      "needs_reply": true,
+      "complexity": "simple",
+      "confidence": 0.92,
+      "questions": ["How do I add a new employee?", "Do I need his bank details before his first day?"],
+      "escalation_flags": [],
+      "kb_queries": ["add new employee bank details start date", "starter plan employee limit"],
+      "client_hint": "Copperleaf Café"
+    },
+    "draft": {
+      "body": "Hi Jess,\n\nCongratulations on the new hire. You can add him under People → Add employee with his name, start date, pay rate, tax code and bank details. New starters added before the payroll cut-off are included in the next run automatically, so the end-of-month payroll will pick him up.\n\nHis bank details need to be in before that cut-off rather than before his first day. It's also worth ticking \"Invite to self-service\" so he can see his payslips online.\n\nWith him on board you'll have 9 employees, which is still within the Starter plan's limit of 10.",
+      "citations": [
+        {"source_id": "KB:adding-employees#add-one-employee", "supports": "How to add an employee and the payroll cut-off"},
+        {"source_id": "KB:adding-employees#plan-limits", "supports": "Starter covers up to 10 employees"},
+        {"source_id": "CLIENT:copperleaf-cafe", "supports": "Copperleaf currently has 8 employees on Starter"}
+      ],
+      "missing_info": [],
+      "confidence": 0.9
+    }
+  },
+  "demo-e05": {
+    "classification": {
+      "category": "general_question",
+      "urgency": "normal",
+      "urgency_reason": "The tax code change applies from next month's payroll.",
+      "sentiment": "neutral",
+      "summary": "An employee's tax code is changing to 1100L next month; asks whether she must update it in Tidewater or if it updates automatically.",
+      "needs_reply": true,
+      "complexity": "simple",
+      "confidence": 0.88,
+      "questions": ["Does a tax code change update automatically or must it be entered?"],
+      "escalation_flags": [],
+      "kb_queries": ["employee tax code change update"],
+      "client_hint": null
+    },
+    "draft": {
+      "body": "Hi Jess,\n\nThanks for checking before your next run. You can see and edit each employee's tax code under People → Tax.\n\nI'm checking with our payroll team whether code changes like this come through automatically or need to be entered by hand, and I'll confirm by tomorrow so you have plenty of time before the next payroll.",
+      "citations": [
+        {"source_id": "KB:payroll-run-errors#common-error-codes", "supports": "Tax codes are managed under People → Tax"}
+      ],
+      "missing_info": ["Whether HMRC tax code notices update automatically is not in the knowledge base: confirm with the payroll team before sending"],
+      "confidence": 0.5
+    }
+  },
+  "demo-e06": {
+    "classification": {
+      "category": "account_access",
+      "urgency": "high",
+      "urgency_reason": "The only admin is locked out and must approve payroll by Wednesday.",
+      "sentiment": "neutral",
+      "summary": "Only account admin lost her 2FA phone and is locked out; needs access to approve payroll by Wednesday and asks us to switch off 2FA.",
+      "needs_reply": true,
+      "complexity": "simple",
+      "confidence": 0.93,
+      "questions": ["Can you turn off 2FA so I can sign in?"],
+      "escalation_flags": ["payment_deadline"],
+      "kb_queries": ["lost phone two-factor authentication reset only admin"],
+      "client_hint": null
+    },
+    "draft": {
+      "body": "Hi Hannah,\n\nSorry to hear about your phone. For your security we can't switch off two-factor authentication by email, but we can reset it quickly. As you're the only admin on the account, the reset is done after a short video call where we check your identity with photo ID.\n\nReply with a couple of times that suit you today or tomorrow and we'll set up the call, so you're back in well before Wednesday's approval.",
+      "citations": [
+        {"source_id": "KB:sign-in-and-2fa#lost-two-factor-device", "supports": "2FA reset for a sole admin requires a video call with photo ID; never by email"}
+      ],
+      "missing_info": [],
+      "confidence": 0.91
+    }
+  },
+  "demo-e07": {
+    "classification": {
+      "category": "billing",
+      "urgency": "normal",
+      "urgency_reason": "Refund question about months from November onwards; no deadline stated.",
+      "sentiment": "neutral",
+      "summary": "Annual Growth plan paid in March; clinics merging into a new company in November, so asks for a refund of unused months.",
+      "needs_reply": true,
+      "complexity": "complex",
+      "confidence": 0.9,
+      "questions": ["Can we get a refund for the months we won't use?"],
+      "escalation_flags": [],
+      "kb_queries": ["annual plan refund unused months", "move unused months different entity"],
+      "client_hint": null
+    },
+    "draft": {
+      "body": "Hi Lucy,\n\nThanks for letting us know about the merger. Annual plans can only be refunded in full within 30 days of the start date, so we can't refund the remaining months of the plan you started in March.\n\nWhat we can do is move the unused months to the new company, so you don't pay twice. Your account manager, Tom Becker, will be in touch to set that up once you have the new company's details.",
+      "citations": [
+        {"source_id": "KB:refund-policy#annual-plans", "supports": "30-day refund window; account manager can move unused months to a different entity"},
+        {"source_id": "CLIENT:evergreen-vet", "supports": "Evergreen is on an annual Growth plan; account manager is Tom Becker"}
+      ],
+      "missing_info": ["Confirm the new company's name and when it starts running payroll"],
+      "confidence": 0.85
+    }
+  },
+  "demo-e08": {
+    "classification": {
+      "category": "feature_request",
+      "urgency": "low",
+      "urgency_reason": "Product suggestion with no deadline.",
+      "sentiment": "positive",
+      "summary": "Suggests downloading all monthly payslips as a single PDF for their accountant; asks if it exists or is planned.",
+      "needs_reply": true,
+      "complexity": "simple",
+      "confidence": 0.95,
+      "questions": ["Can all payslips be downloaded as one PDF?", "Is it on the roadmap?"],
+      "escalation_flags": [],
+      "kb_queries": ["download payslips bulk PDF"],
+      "client_hint": null
+    },
+    "draft": {
+      "body": "Hi Nils,\n\nThanks for the suggestion, it's a good one. I've logged it with our product team so they can consider it for the roadmap, and we'll let you know if it's scheduled.",
+      "citations": [],
+      "missing_info": ["Check with product whether a bulk payslip export is already planned"],
+      "confidence": 0.8
+    }
+  },
+  "demo-e10": {
+    "classification": {
+      "category": "complaint",
+      "urgency": "high",
+      "urgency_reason": "Repeated integration failure before Friday's month-end close, and the client mentions leaving at renewal.",
+      "sentiment": "angry",
+      "summary": "Third QuickBooks sync failure this month; team re-keying journals before Friday's close; considering other providers at the October renewal.",
+      "needs_reply": true,
+      "complexity": "complex",
+      "confidence": 0.94,
+      "questions": ["Why did the sync fail again?", "Will it happen again?"],
+      "escalation_flags": ["churn_risk", "executive_or_vip"],
+      "kb_queries": ["QuickBooks sync failure authorization expired reconnect", "QuickBooks incident September"],
+      "client_hint": null
+    },
+    "draft": {
+      "body": "Hi Daniel,\n\nI'm sorry. Having your team re-key journals by hand at month end is not acceptable, and I understand why your confidence has been shaken.\n\nHere is what we know. The failures on 16-17 September were caused by a change to the QuickBooks API; it was fixed on 17 September and the affected journals were re-sent automatically. Separately, QuickBooks connections expire after 100 days, or sooner if the QuickBooks admin's password changes, and the nightly sync then fails with \"Authorization expired\". If that is behind this latest failure, reconnecting under Settings → Integrations → QuickBooks and pressing \"Sync now\" sends all the missed journals, so nothing is lost.\n\nPriya, your account manager, will call you today to confirm the cause of this failure and what we're doing to stop it happening again before your close on Friday.",
+      "citations": [
+        {"source_id": "KB:integrations#recent-incident", "supports": "16-17 September QuickBooks API change, fixed on 17 September, journals re-sent"},
+        {"source_id": "KB:integrations#quickbooks-sync-failures", "supports": "Connections expire after 100 days; reconnect and Sync now resends missed journals"},
+        {"source_id": "CLIENT:kestrel-retail", "supports": "Kestrel is at risk with renewal on 31 October; Priya owns the account"}
+      ],
+      "missing_info": ["Check the sync log for the error behind this latest failure", "Confirm Priya can call today"],
+      "confidence": 0.78
+    }
+  },
+  "demo-e11": {
+    "classification": {
+      "category": "legal_compliance",
+      "urgency": "high",
+      "urgency_reason": "Statutory one-month deadline running since 21 September.",
+      "sentiment": "neutral",
+      "summary": "DPO asks for all payroll data on former employee MH-20417 to answer a subject access request received 21 September, delivered securely.",
+      "needs_reply": true,
+      "complexity": "complex",
+      "confidence": 0.96,
+      "questions": ["Provide all payroll data for employee MH-20417", "How will it be provided securely?"],
+      "escalation_flags": ["regulatory"],
+      "kb_queries": ["subject access request payroll data employer processor", "support acknowledge request pass to data protection officer"],
+      "client_hint": null
+    },
+    "draft": {
+      "body": "Hi Anna,\n\nThank you for your request about employee MH-20417, which you received on 21 September. Our Data Protection Officer will handle it and send you the payroll data we hold within 10 calendar days, so you can meet your one-month deadline.\n\nFor security we won't send any personal data by email. The DPO will contact you to arrange a secure transfer, and you can reach them directly at dpo@tidewater.example in the meantime.",
+      "citations": [
+        {"source_id": "KB:data-requests#timelines", "supports": "Data sent within 10 calendar days to meet the one-month deadline"},
+        {"source_id": "KB:data-requests#what-support-should-do", "supports": "No personal data by email; DPO handles the request"}
+      ],
+      "missing_info": [],
+      "confidence": 0.88
+    }
+  },
+  "demo-e12": {
+    "classification": {
+      "category": "scheduling",
+      "urgency": "normal",
+      "urgency_reason": "Wants a call early next week; go-live is 28 October.",
+      "sentiment": "positive",
+      "summary": "Parallel run finished; totals match except two term-time teaching assistants; wants to book the review call Monday or Tuesday afternoon.",
+      "needs_reply": true,
+      "complexity": "simple",
+      "confidence": 0.93,
+      "questions": ["Can we book the parallel-run review call for Monday or Tuesday afternoon?"],
+      "escalation_flags": [],
+      "kb_queries": ["parallel run review onboarding call booking", "go-live checklist test run before first payday"],
+      "client_hint": null
+    },
+    "draft": {
+      "body": "Hi Ben,\n\nGreat news that the parallel run is done. You can book your parallel-run review call at https://tidewater.example/book-onboarding and pick a Monday or Tuesday afternoon slot.\n\nPlease bring the details for the two term-time teaching assistants so we can go through those differences on the call. As a reminder, the go-live checklist asks for a test run to be approved at least 5 working days before your first live payday on 28 October.",
+      "citations": [
+        {"source_id": "KB:onboarding#the-onboarding-plan", "supports": "Onboarding calls are booked at tidewater.example/book-onboarding"},
+        {"source_id": "KB:onboarding#go-live-checklist", "supports": "Approve a test run at least 5 working days before the first live payday"},
+        {"source_id": "CLIENT:orchard-schools", "supports": "First live payroll planned for 28 October"}
+      ],
+      "missing_info": [],
+      "confidence": 0.9
+    }
+  },
+  "demo-e13": {
+    "classification": {
+      "category": "billing",
+      "urgency": "normal",
+      "urgency_reason": "Invoice rejected by their AP system; payment is delayed until it is reissued.",
+      "sentiment": "neutral",
+      "summary": "Invoice INV-2026-09-3380 was rejected for a missing PO; asks us to reissue with PO 4500-7781 and include it on future invoices.",
+      "needs_reply": true,
+      "complexity": "simple",
+      "confidence": 0.96,
+      "questions": ["Reissue INV-2026-09-3380 with PO 4500-7781", "Include the PO on future invoices"],
+      "escalation_flags": [],
+      "kb_queries": ["purchase order number reissue invoice"],
+      "client_hint": null
+    },
+    "draft": {
+      "body": "Hello,\n\nThank you, and sorry for the trouble this caused. We'll reissue invoice INV-2026-09-3380 with PO 4500-7781, usually within 1 business day.\n\nTo include the PO number on future invoices, an account admin can add it under Settings → Billing → Invoice details. It will then appear on every invoice from the next one onwards.",
+      "citations": [
+        {"source_id": "KB:invoices-and-payments#purchase-order-numbers", "supports": "PO numbers are added under Invoice details; Billing reissues within 1 business day"}
+      ],
+      "missing_info": [],
+      "confidence": 0.92
+    }
+  },
+  "demo-e16": {
+    "classification": {
+      "category": "general_question",
+      "urgency": "normal",
+      "urgency_reason": "Sales enquiry from a prospect; no deadline.",
+      "sentiment": "positive",
+      "summary": "Prospect (care group, ~250 staff, 6 sites) asks for pricing and whether weekly and monthly pay frequencies are supported.",
+      "needs_reply": true,
+      "complexity": "simple",
+      "confidence": 0.9,
+      "questions": ["What would it cost for 250 employees?", "Do you support weekly and monthly pay frequencies?"],
+      "escalation_flags": [],
+      "kb_queries": ["pricing more than 100 employees quote", "multiple pay frequencies weekly monthly"],
+      "client_hint": "Northpeak Care"
+    },
+    "draft": {
+      "body": "Hi Olivia,\n\nThanks for considering Tidewater. For organisations with more than 100 employees we quote on our Enterprise plan, which includes unlimited employees and a named account manager. Our sales team prepares the quote after a short call, which you can book at https://tidewater.example/demo.\n\nOn the call they can also go through how weekly and monthly payrolls would work across your six sites.",
+      "citations": [
+        {"source_id": "KB:plans-and-pricing#pricing-for-new-clients", "supports": "Prospects over 100 employees are quoted after a call; booking link"},
+        {"source_id": "KB:plans-and-pricing#plans", "supports": "Enterprise: unlimited employees, named account manager"}
+      ],
+      "missing_info": ["Support for mixed weekly and monthly pay frequencies is not in the knowledge base: confirm before promising it"],
+      "confidence": 0.74
+    }
+  },
+  "demo-e17": {
+    "classification": {
+      "category": "technical_issue",
+      "urgency": "normal",
+      "urgency_reason": "Employees can't see payslips; pay itself is not affected.",
+      "sentiment": "neutral",
+      "summary": "Several nurses see an empty payslip list in the app since yesterday, although the September run was finalised on Monday.",
+      "needs_reply": true,
+      "complexity": "simple",
+      "confidence": 0.92,
+      "questions": ["Why can't staff see their payslips?"],
+      "escalation_flags": [],
+      "kb_queries": ["employees cannot see payslips app empty list"],
+      "client_hint": null
+    },
+    "draft": {
+      "body": "Hi Raj,\n\nThanks for the details. As the September run was approved and finalised on Monday, the payslips should be showing. The most likely cause is a known issue in version 4.2 of the employee app, which can show an empty payslip list. Asking the affected nurses to update the app to version 4.3 or later from the App Store or Google Play should fix it.\n\nIf anyone still can't see their payslips after updating, check that they've accepted their self-service invitation; you can resend it under People → Self-service → Resend invite.",
+      "citations": [
+        {"source_id": "KB:employee-self-service#known-issue-app-version-4-2", "supports": "App 4.2 can show an empty payslip list; update to 4.3+"},
+        {"source_id": "KB:employee-self-service#employees-can-t-see-their-payslips", "supports": "Payslips appear once finalised; resend self-service invites"}
+      ],
+      "missing_info": [],
+      "confidence": 0.9
+    }
+  },
+  "demo-e18": {
+    "classification": {
+      "category": "cancellation",
+      "urgency": "high",
+      "urgency_reason": "CFO has a competing quote 20% lower and is deciding before the 1 December renewal.",
+      "sentiment": "neutral",
+      "summary": "CFO has a competing quote ~20% lower; wants a pricing call before the 1 December renewal and asks what notice is needed to leave.",
+      "needs_reply": true,
+      "complexity": "complex",
+      "confidence": 0.93,
+      "questions": ["Can you improve on the competing quote?", "What notice would we need to give?"],
+      "escalation_flags": ["churn_risk", "executive_or_vip"],
+      "kb_queries": ["cancel subscription notice period renewal", "pricing discount renewal"],
+      "client_hint": null
+    },
+    "draft": {
+      "body": "Hi Mark,\n\nThank you for being open with us about the competing quote. Priya would welcome a call to review your pricing, seat count and plan before the renewal on 1 December, and she'll be in touch today to find a time that suits you.\n\nTo answer your question on notice: subscriptions can be cancelled with 30 days' written notice before the renewal date, so for a 1 December renewal notice would need to reach us by 1 November.",
+      "citations": [
+        {"source_id": "KB:cancellation#notice-period", "supports": "30 days' written notice before the renewal date"},
+        {"source_id": "KB:cancellation#before-you-decide", "supports": "Account manager reviews pricing, seats and plan fit before renewal"},
+        {"source_id": "CLIENT:delta-build", "supports": "Renewal on 1 December; Priya owns the account"}
+      ],
+      "missing_info": ["Confirm Priya's availability before promising a call today"],
+      "confidence": 0.86
+    }
+  },
+  "demo-e19": {
+    "classification": {
+      "category": "general_question",
+      "urgency": "low",
+      "urgency_reason": "Thank-you note; nothing to action.",
+      "sentiment": "positive",
+      "summary": "Thanks Tom for resolving their holiday pay question.",
+      "needs_reply": false,
+      "complexity": "simple",
+      "confidence": 0.97,
+      "questions": [],
+      "escalation_flags": [],
+      "kb_queries": [],
+      "client_hint": null
+    }
+  },
+  "demo-e20": {
+    "classification": {
+      "category": "billing",
+      "urgency": "normal",
+      "urgency_reason": "Service credit request under the Enterprise SLA; must be raised within 30 days.",
+      "sentiment": "neutral",
+      "summary": "Asks for the Enterprise SLA service credit for Tuesday's outage and when it will be applied.",
+      "needs_reply": true,
+      "complexity": "simple",
+      "confidence": 0.94,
+      "questions": ["How much is the service credit?", "When will it be applied?"],
+      "escalation_flags": [],
+      "kb_queries": ["service credit outage SLA enterprise", "outage 22 September downtime"],
+      "client_hint": null
+    },
+    "draft": {
+      "body": "Hello,\n\nThank you for your patience, and sorry for the disruption on Tuesday. The payroll app was unavailable from 09:10 to 11:40 UK time on 22 September. Your Enterprise plan includes a 99.9% monthly uptime SLA, and for each full hour of downtime beyond the SLA we credit 10% of that month's subscription fee.\n\nOur Billing team will confirm the exact credit for September and apply it to your next invoice. We'll email you the amount as soon as it's confirmed.",
+      "citations": [
+        {"source_id": "KB:service-status#incident-on-22-september", "supports": "Outage 09:10-11:40 on 22 September"},
+        {"source_id": "KB:refund-policy#service-credits-for-outages", "supports": "10% credit per full hour beyond the 99.9% SLA, applied to the next invoice"},
+        {"source_id": "KB:refund-policy#who-approves", "supports": "Billing approves credits"}
+      ],
+      "missing_info": ["Billing to calculate the credit amount"],
+      "confidence": 0.88
+    }
+  },
+  "demo-e21": {
+    "classification": {
+      "category": "billing",
+      "urgency": "low",
+      "urgency_reason": "Planning question about next month.",
+      "sentiment": "positive",
+      "summary": "Hiring 3 more people next month (7 to 10 employees); asks whether their plan or price will change.",
+      "needs_reply": true,
+      "complexity": "simple",
+      "confidence": 0.94,
+      "questions": ["Will going to 10 employees change our plan or price?"],
+      "escalation_flags": [],
+      "kb_queries": ["plan limit 10 employees starter price", "upgrade starter to growth keeps data"],
+      "client_hint": null
+    },
+    "draft": {
+      "body": "Hi Nils,\n\nCongratulations on the new hires. Going from 7 to 10 people keeps you on the Starter plan, which covers up to 10 employees, so your plan won't change.\n\nStarter is £6 per employee per month (minimum £30), so with 10 employees your price will be £60 a month once the three new starters are added. If you grow beyond 10, you'll be prompted to upgrade to Growth, and all your data and settings carry over.",
+      "citations": [
+        {"source_id": "KB:adding-employees#plan-limits", "supports": "Starter covers up to 10 employees; upgrade prompt beyond the limit"},
+        {"source_id": "KB:plans-and-pricing#plans", "supports": "Starter is £6 per employee per month, minimum £30"},
+        {"source_id": "KB:plans-and-pricing#changing-plans", "supports": "Moving from Starter to Growth keeps all data and settings"}
+      ],
+      "missing_info": [],
+      "confidence": 0.9
+    }
+  },
+  "demo-e22": {
+    "classification": {
+      "category": "general_question",
+      "urgency": "normal",
+      "urgency_reason": "An employee (not a client admin) reports missing overtime.",
+      "sentiment": "negative",
+      "summary": "An employee of a client (not an admin) says August overtime is missing from his payslip and asks us to fix it.",
+      "needs_reply": true,
+      "complexity": "simple",
+      "confidence": 0.9,
+      "questions": ["Can you fix the missing overtime on my payslip?"],
+      "escalation_flags": [],
+      "kb_queries": ["employee question about payslip contact employer"],
+      "client_hint": null
+    },
+    "draft": {
+      "body": "Hi Kyle,\n\nThanks for getting in touch. We provide the payroll software your employer uses, but we can only discuss pay details with your employer's payroll administrators, so we can't look into or change your payslip ourselves.\n\nPlease contact your employer's payroll or HR team about the missing August overtime. If your manager is away, they should be able to help or pass it to the right person.",
+      "citations": [
+        {"source_id": "KB:employee-self-service#questions-from-employees", "supports": "We only discuss payroll details with the employer's admins"}
+      ],
+      "missing_info": [],
+      "confidence": 0.92
+    }
+  }
+}

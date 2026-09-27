@@ -1,0 +1,110 @@
+# Who handles what. Rules are checked top to bottom; the first match wins.
+#
+# Conditions (all given conditions must match):
+#   category, urgency, tier, complexity: a value or a list of values
+#   escalation_flags_any: list; matches if the query has any of these flags
+#   excluded: true for confidential clients (never sent to the AI)
+#   needs_human: true when no draft could be written (refusal, error, low confidence)
+#   unknown_client: true when the sender matched no client record
+# assign: a team member key, "account_owner" (from clients.csv) or "triage_lead"
+# alert: post to Slack/Teams right away (critical/high urgency always alerts)
+
+team:
+  - key: maya
+    name: Maya Chen
+    role: Support Lead
+    email: maya@tidewater.example
+    slack_id: U04MAYA
+    teams_upn: maya@tidewater.example
+  - key: priya
+    name: Priya Shah
+    role: Account Manager (Enterprise)
+    email: priya@tidewater.example
+    slack_id: U04PRIYA
+    teams_upn: priya@tidewater.example
+  - key: tom
+    name: Tom Becker
+    role: Account Manager (Growth & Starter)
+    email: tom@tidewater.example
+    slack_id: U04TOM
+    teams_upn: tom@tidewater.example
+  - key: omar
+    name: Omar Haddad
+    role: Billing Specialist
+    email: omar@tidewater.example
+    slack_id: U04OMAR
+    teams_upn: omar@tidewater.example
+  - key: lena
+    name: Lena Novak
+    role: Technical Support Engineer
+    email: lena@tidewater.example
+    slack_id: U04LENA
+    teams_upn: lena@tidewater.example
+  - key: dana
+    name: Dana Brooks
+    role: Head of Client Services
+    email: dana@tidewater.example
+    slack_id: U04DANA
+    teams_upn: dana@tidewater.example
+
+triage_lead: maya
+
+rules:
+  - name: confidential-client
+    when: { excluded: true }
+    assign: account_owner
+    alert: true
+
+  - name: legal-security-regulatory
+    when: { escalation_flags_any: [legal_threat, security_or_data, regulatory] }
+    assign: dana
+    alert: true
+
+  - name: churn-risk
+    when: { escalation_flags_any: [churn_risk] }
+    assign: account_owner
+    alert: true
+
+  - name: needs-human
+    when: { needs_human: true }
+    assign: triage_lead
+    alert: true
+
+  - name: payroll-emergency
+    when: { category: technical_issue, urgency: critical }
+    assign: lena
+    alert: true
+
+  - name: billing
+    when: { category: [billing] }
+    assign: omar
+
+  - name: cancellation
+    when: { category: [cancellation] }
+    assign: account_owner
+    alert: true
+
+  - name: technical
+    when: { category: [technical_issue, account_access] }
+    assign: lena
+
+  - name: complex-enterprise
+    when: { tier: enterprise, complexity: complex }
+    assign: account_owner
+    alert: true
+
+  - name: unknown-sender
+    when: { unknown_client: true }
+    assign: triage_lead
+
+  - name: default
+    when: {}
+    assign: account_owner
+
+# Reply-by targets. Due = received + hours[urgency] × multiplier[tier].
+sla:
+  hours: { critical: 2, high: 4, normal: 24, low: 72 }
+  tier_multiplier: { enterprise: 0.5, growth: 1.0, starter: 1.0, standard: 1.0 }
+alert_urgencies: [critical, high]
+# Drafts below this confidence are flagged for a careful review.
+low_confidence_below: 0.55

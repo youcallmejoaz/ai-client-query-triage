@@ -1,0 +1,137 @@
+{
+  "name": "Setup: create Gmail labels",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Setup: create Gmail labels\nRun once (and again after adding clients or team members). Creates every `AI/...` label the triage service can apply, so the triage workflow can add them by ID. Existing labels are skipped.",
+        "height": 180,
+        "width": 460,
+        "color": 5
+      },
+      "id": "1d3ce155-a9b9-508a-99eb-85066a4b81fe",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -220
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "ab036ae8-da14-54c7-805e-31f3882b6ce9",
+      "name": "Run once",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://triage:8000/api/labels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "97a5ab56-284a-58f9-9790-c3c7d56c6c96",
+      "name": "Get label names",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        60
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "Triage API key (X-API-Key)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parents first, so Gmail nests AI/Urgency/High under AI/Urgency under AI.\nconst names = new Set();\nfor (const label of $input.first().json.labels) {\n  const parts = label.split('/');\n  for (let i = 1; i <= parts.length; i++) names.add(parts.slice(0, i).join('/'));\n}\nreturn [...names].map((name) => ({ json: { name } }));"
+      },
+      "id": "6337771d-6a24-5359-a882-6bdae79ae44b",
+      "name": "One item per label",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "operation": "create",
+        "name": "={{ $json.name }}",
+        "options": {
+          "labelListVisibility": "labelShow",
+          "messageListVisibility": "show"
+        }
+      },
+      "id": "0baeb321-e449-5d73-91c0-96f60d1f1860",
+      "name": "Create label",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        660,
+        60
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_ME",
+          "name": "Gmail (shared inbox)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Run once": {
+      "main": [
+        [
+          {
+            "node": "Get label names",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get label names": {
+      "main": [
+        [
+          {
+            "node": "One item per label",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One item per label": {
+      "main": [
+        [
+          {
+            "node": "Create label",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

@@ -1,0 +1,273 @@
+{
+  "_comment": "Demo shared inbox. minutes_ago is relative to when `triage seed-demo` runs, so SLA timers look realistic at any time.",
+  "mailbox": "support@tidewater.example",
+  "messages": [
+    {
+      "id": "demo-e01",
+      "thread_id": "t-acme-payroll",
+      "direction": "in",
+      "from_name": "Sarah Okafor",
+      "from_email": "sarah.okafor@acmelogistics.example",
+      "subject": "Payroll run failed - 38 staff not paid?",
+      "minutes_ago": 95,
+      "body": "Hi team,\n\nThis morning's weekly payroll run is showing \"Needs attention\" with error E-102 Bank details rejected. The report lists 38 employees, mostly our new Leeds depot starters. Payday is tomorrow (Friday).\n\nWhat do we need to do to make sure everyone is paid on time? Can we still use the same-day option if we fix it tomorrow morning?\n\nThanks,\nSarah Okafor\nPayroll Manager, Acme Logistics",
+      "attachments": ["E102-rejection-report.pdf"]
+    },
+    {
+      "id": "demo-e02",
+      "thread_id": "t-acme-payroll",
+      "direction": "in",
+      "from_name": "Sarah Okafor",
+      "from_email": "sarah.okafor@acmelogistics.example",
+      "subject": "Re: Payroll run failed - 38 staff not paid?",
+      "minutes_ago": 25,
+      "body": "Following up on this - our Finance Director is asking whether the 38 Leeds staff will be paid on Friday. We have corrected the sort codes for 31 of them already. Can someone call me on 0113 496 0021 as soon as possible?\n\nSarah",
+      "attachments": []
+    },
+    {
+      "id": "demo-e03",
+      "thread_id": "t-bluefin-charge",
+      "direction": "in",
+      "from_name": "Raj Patel",
+      "from_email": "raj.patel@bluefindental.example",
+      "subject": "Charged twice for September?",
+      "minutes_ago": 420,
+      "body": "Hello,\n\nOur bank statement shows two direct debits from Tidewater Payroll on 1 September, both for £320.00. We only have one subscription. Can you check and refund the duplicate please? The invoice number on the one we received is INV-2026-09-4471.\n\nRegards,\nRaj Patel\nPractice Finance Manager, Bluefin Dental Group",
+      "attachments": ["bank-statement-sept.png"]
+    },
+    {
+      "id": "demo-e04",
+      "thread_id": "t-copperleaf-new-starter",
+      "direction": "in",
+      "from_name": "Jess Moreno",
+      "from_email": "hello.copperleafcafe@gmail.example",
+      "subject": "Adding a new barista",
+      "minutes_ago": 1560,
+      "body": "Hi! We've just hired a new barista who starts on Monday. How do I add him so he gets paid at the end of the month? Do I need his bank details before his first day?\n\nThanks, Jess\nCopperleaf Café",
+      "attachments": []
+    },
+    {
+      "id": "demo-e05",
+      "thread_id": "t-copperleaf-tax-code",
+      "direction": "in",
+      "from_name": "Jess Moreno",
+      "from_email": "hello.copperleafcafe@gmail.example",
+      "subject": "Letter about a tax code change",
+      "minutes_ago": 300,
+      "body": "Hello again,\n\nOne of my staff got a letter saying her tax code is changing to 1100L from next month. Do I need to do anything in Tidewater or does it update by itself? I don't want to get it wrong.\n\nJess",
+      "attachments": []
+    },
+    {
+      "id": "demo-e06",
+      "thread_id": "t-delta-2fa",
+      "direction": "in",
+      "from_name": "Hannah Price",
+      "from_email": "hannah.price@deltabuild.example",
+      "subject": "Locked out - lost my phone",
+      "minutes_ago": 50,
+      "body": "Hi,\n\nI lost my phone over the weekend and now I can't get past the two-factor code screen. I'm the only admin on our account and I need to approve this month's payroll by Wednesday. Can you turn off 2FA for me so I can get in?\n\nHannah Price\nPayroll Administrator, Delta Build Co.",
+      "attachments": []
+    },
+    {
+      "id": "demo-e07",
+      "thread_id": "t-evergreen-refund",
+      "direction": "in",
+      "from_name": "Dr Lucy Grant",
+      "from_email": "lucy.grant@evergreenvet.example",
+      "subject": "Refund for unused months?",
+      "minutes_ago": 290,
+      "body": "Dear Tidewater,\n\nWe paid for an annual Growth plan in March. We are merging our two clinics into one company in November and will run payroll through the new entity. Can we get a refund for the months we won't use?\n\nKind regards,\nDr Lucy Grant\nEvergreen Vet Clinic",
+      "attachments": []
+    },
+    {
+      "id": "demo-e08",
+      "thread_id": "t-fjord-pdf",
+      "direction": "in",
+      "from_name": "Nils Berg",
+      "from_email": "nils@fjorddesign.example",
+      "subject": "Feature idea: download all payslips as one PDF",
+      "minutes_ago": 2900,
+      "body": "Hi there,\n\nSmall request: our accountant asks for every payslip each month. It would be great to download them all as one PDF instead of clicking each one. Is that possible now or on the roadmap?\n\nCheers,\nNils",
+      "attachments": []
+    },
+    {
+      "id": "demo-e09",
+      "thread_id": "t-harrow-settlement",
+      "direction": "in",
+      "from_name": "James Whitfield",
+      "from_email": "j.whitfield@harrowpike.example",
+      "subject": "Partner departure - final settlement payment",
+      "minutes_ago": 40,
+      "body": "Dear Priya,\n\nFurther to our call, please see the settlement figures for the departing partner attached. We need the payment made through the October payroll with the tax treatment set out in the schedule.\n\nJames Whitfield\nFinance Partner, Harrow & Pike LLP",
+      "attachments": ["settlement-schedule.pdf"]
+    },
+    {
+      "id": "demo-e10",
+      "thread_id": "t-kestrel-sync",
+      "direction": "in",
+      "from_name": "Daniel Cho",
+      "from_email": "daniel.cho@kestrelretail.example",
+      "subject": "Third QuickBooks sync failure - seriously considering our options",
+      "minutes_ago": 180,
+      "body": "This is the third time this month our payroll journals haven't reached QuickBooks. Our month-end close is Friday and my team is re-keying journals by hand again. I was told on 17 September this was fixed.\n\nI need to know what is going on and whether it will happen again. Frankly, with our renewal coming up at the end of October, we are looking at other providers.\n\nDaniel Cho\nFinance Director, Kestrel Retail",
+      "attachments": []
+    },
+    {
+      "id": "demo-e11",
+      "thread_id": "t-marlow-sar",
+      "direction": "in",
+      "from_name": "Anna Kowalski",
+      "from_email": "anna.kowalski@marlowhotels.example",
+      "subject": "Subject access request - former employee",
+      "minutes_ago": 125,
+      "body": "Hello,\n\nWe received a subject access request on 21 September from a former employee of our Bath hotel. We need all payroll data you hold for her, including payslips and any correspondence, to respond within the legal deadline. Her employee number is MH-20417.\n\nPlease confirm how you will provide this securely.\n\nAnna Kowalski\nData Protection Officer, Marlow Hotels",
+      "attachments": []
+    },
+    {
+      "id": "demo-e12",
+      "thread_id": "t-orchard-call",
+      "direction": "in",
+      "from_name": "Ben Adeyemi",
+      "from_email": "ben.adeyemi@orchardschools.example",
+      "subject": "Booking our parallel-run review call",
+      "minutes_ago": 240,
+      "body": "Hi,\n\nWe finished our parallel run yesterday and the totals match except for two teaching assistants on term-time contracts. Could we book the review call for early next week? Monday or Tuesday afternoon works best.\n\nThanks,\nBen Adeyemi\nBusiness Manager, Orchard Schools Trust",
+      "attachments": []
+    },
+    {
+      "id": "demo-e13",
+      "thread_id": "t-acme-po",
+      "direction": "in",
+      "from_name": "Acme Accounts Payable",
+      "from_email": "ap@acmelogistics.example",
+      "subject": "September invoice - PO number missing",
+      "minutes_ago": 1500,
+      "body": "Good afternoon,\n\nInvoice INV-2026-09-3380 does not show our purchase order number, so our system has rejected it. Please reissue it with PO 4500-7781 and make sure future invoices include it.\n\nAccounts Payable\nAcme Logistics",
+      "attachments": []
+    },
+    {
+      "id": "demo-e14",
+      "thread_id": "t-evergreen-ooo",
+      "direction": "in",
+      "from_name": "Evergreen Finance",
+      "from_email": "finance@evergreenvet.example",
+      "subject": "Automatic reply: Your Tidewater invoice for October",
+      "minutes_ago": 1800,
+      "body": "Thank you for your email. I am out of the office until Monday 5 October with limited access to email. For urgent matters please call the clinic.",
+      "headers": { "Auto-Submitted": "auto-replied" },
+      "attachments": []
+    },
+    {
+      "id": "demo-e15",
+      "thread_id": "t-rankrocket",
+      "direction": "in",
+      "from_name": "RankRocket Growth",
+      "from_email": "growth@rankrocket.example",
+      "subject": "Page 1 on Google in 30 days - guaranteed",
+      "minutes_ago": 600,
+      "body": "Hi there, we help payroll companies rank on page 1 of Google in 30 days or your money back. Reply YES for a free audit.",
+      "headers": { "List-Unsubscribe": "<mailto:unsub@rankrocket.example>" },
+      "attachments": []
+    },
+    {
+      "id": "demo-e16",
+      "thread_id": "t-northpeak-pricing",
+      "direction": "in",
+      "from_name": "Olivia Grant",
+      "from_email": "olivia.grant@northpeak.example",
+      "subject": "Pricing for 250 employees",
+      "minutes_ago": 360,
+      "body": "Hello,\n\nWe're a care home group with about 250 staff across 6 sites, currently with another payroll provider. What would Tidewater cost for us, and do you support multiple pay frequencies (weekly and monthly)?\n\nBest,\nOlivia Grant\nOperations Director, Northpeak Care",
+      "attachments": []
+    },
+    {
+      "id": "demo-e17",
+      "thread_id": "t-bluefin-payslips",
+      "direction": "in",
+      "from_name": "Raj Patel",
+      "from_email": "raj.patel@bluefindental.example",
+      "subject": "Staff can't see payslips in the app",
+      "minutes_ago": 175,
+      "body": "Hi,\n\nSeveral of our nurses say their payslip list is empty in the Tidewater app since yesterday. The September run was approved and finalised on Monday. Is something wrong?\n\nRaj",
+      "attachments": []
+    },
+    {
+      "id": "demo-e18",
+      "thread_id": "t-delta-renewal",
+      "direction": "in",
+      "from_name": "Mark Ellis",
+      "from_email": "mark.ellis@deltabuild.example",
+      "subject": "Renewal - we need to talk about pricing",
+      "minutes_ago": 70,
+      "body": "Priya / team,\n\nOur renewal is on 1 December. We have a competing quote that is roughly 20% below what we pay now. Before we decide, I'd like a call to understand whether you can do better. If not, please confirm what notice we would need to give.\n\nMark Ellis\nCFO, Delta Build Co.",
+      "attachments": []
+    },
+    {
+      "id": "demo-e19",
+      "thread_id": "t-evergreen-thanks",
+      "direction": "in",
+      "from_name": "Dr Lucy Grant",
+      "from_email": "lucy.grant@evergreenvet.example",
+      "subject": "Thank you!",
+      "minutes_ago": 1200,
+      "body": "Just a quick note to say thank you to Tom for sorting out our holiday pay question yesterday. Much appreciated.\n\nLucy",
+      "attachments": []
+    },
+    {
+      "id": "demo-e20",
+      "thread_id": "t-marlow-credit",
+      "direction": "in",
+      "from_name": "Marlow Hotels Finance",
+      "from_email": "finance@marlowhotels.example",
+      "subject": "Service credit for Tuesday's outage",
+      "minutes_ago": 1560,
+      "body": "Hello,\n\nYour system was down for most of Tuesday morning and our hotel managers couldn't approve timesheets. Under our Enterprise agreement we understand we are entitled to a service credit. Please confirm the amount and when it will be applied.\n\nMarlow Hotels Group Finance",
+      "attachments": []
+    },
+    {
+      "id": "demo-e21",
+      "thread_id": "t-fjord-seats",
+      "direction": "in",
+      "from_name": "Nils Berg",
+      "from_email": "nils@fjorddesign.example",
+      "subject": "Hiring 3 more people - will our price change?",
+      "minutes_ago": 480,
+      "body": "Hi again,\n\nWe're hiring three more designers next month, which takes us from 7 to 10 people. Will that change our plan or price?\n\nNils",
+      "attachments": []
+    },
+    {
+      "id": "demo-e22",
+      "thread_id": "t-employee-payslip",
+      "direction": "in",
+      "from_name": "Kyle M",
+      "from_email": "kyle.m1990@gmail.example",
+      "subject": "my payslip is wrong",
+      "minutes_ago": 115,
+      "body": "hi my employer uses tidewater and my overtime from august is missing from my payslip. can you fix it? my manager is on holiday",
+      "attachments": []
+    },
+    {
+      "id": "demo-e23",
+      "thread_id": "t-delta-p60",
+      "direction": "in",
+      "from_name": "Hannah Price",
+      "from_email": "hannah.price@deltabuild.example",
+      "subject": "Where do I find last year's P60s?",
+      "minutes_ago": 4000,
+      "body": "Hi, an employee has asked for a copy of last year's P60. Where can I download it?\n\nHannah",
+      "attachments": []
+    },
+    {
+      "id": "demo-o01",
+      "thread_id": "t-delta-p60",
+      "direction": "out",
+      "from_name": "Maya Chen",
+      "from_email": "support@tidewater.example",
+      "to_email": "hannah.price@deltabuild.example",
+      "subject": "Re: Where do I find last year's P60s?",
+      "minutes_ago": 3880,
+      "body": "Hi Hannah,\n\nYou can download P60s in bulk under Reports > Year end. Let me know if you need anything else.\n\nBest regards,\nMaya\nTidewater Payroll Client Support",
+      "attachments": []
+    }
+  ]
+}
