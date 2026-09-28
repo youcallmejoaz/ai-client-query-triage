@@ -203,6 +203,15 @@ def gmail_address(credentials: Any) -> str:
     return str(service.users().getProfile(userId="me").execute()["emailAddress"]).lower()
 
 
+def missing_scopes(credentials: Any) -> list[str]:
+    """Scopes we asked for that the person unticked on Google's consent screen."""
+    granted = getattr(credentials, "granted_scopes", None)
+    if not granted:  # Google didn't say; assume everything was granted
+        return []
+    granted = set(granted.split() if isinstance(granted, str) else granted)
+    return [scope for scope in GMAIL_SCOPES if scope not in granted]
+
+
 def credentials_from_token(token: dict[str, Any]) -> Any:
     from google.oauth2.credentials import Credentials
 
@@ -274,11 +283,42 @@ def open_mailbox(settings: Settings, db: Database) -> MailProvider:
     return DemoMailbox(db, settings.mailbox_address)
 
 
+def _http_status(exc: BaseException) -> int | None:
+    """The HTTP status of a Gmail API (googleapiclient) or Graph (httpx) error, if it is one."""
+    resp = getattr(exc, "resp", None) or getattr(exc, "response", None)
+    status = getattr(resp, "status", None) or getattr(resp, "status_code", None)
+    return int(status) if status else None
+
+
 def is_auth_failure(exc: BaseException) -> bool:
     """True when the mailbox's credentials stopped working (revoked, expired test-mode token)."""
     from google.auth.exceptions import RefreshError
 
-    return isinstance(exc, RefreshError | MailboxNotConnected)
+    return isinstance(exc, RefreshError | MailboxNotConnected) or _http_status(exc) == 401
+
+
+def describe_mail_error(exc: BaseException) -> str:
+    """A reason a person can act on, for an error while reading or writing the mailbox."""
+    status = _http_status(exc)
+    reason = str(getattr(exc, "reason", "") or exc).strip()
+    text = f"{reason} {getattr(exc, 'error_details', '')}".lower()
+    if status == 403 and (
+        "has not been used" in text or "is disabled" in text or "accessnotconfigured" in text
+    ):
+        return (
+            "The Gmail API is not enabled in the Google Cloud project of your OAuth client. Enable it "
+            "(APIs & Services → Library → Gmail API → Enable), wait a minute and try again."
+        )
+    if status == 403 and ("insufficient" in text or "scope" in text):
+        return (
+            "Google didn't grant permission to manage the mailbox. Open Settings, press Connect Gmail "
+            "again and tick the box to read, compose and delete Gmail messages."
+        )
+    if status == 429 or "ratelimitexceeded" in text or "quota" in text:
+        return "Gmail's rate limit was reached. Wait a few minutes and check again."
+    if status:
+        return f"The mailbox returned HTTP {status}: {reason}"
+    return f"{type(exc).__name__}: {reason}"
 
 
 def auth_failure_message(settings: Settings) -> str:

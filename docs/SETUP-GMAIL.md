@@ -140,6 +140,16 @@ at. Store the key carefully and restrict who can change `GMAIL_DELEGATED_USER`.
 Google Groups collaborative inboxes have no API for drafts. Use a real mailbox
 (a Workspace user or a delegated account) as the shared inbox.
 
+## Troubleshooting
+
+| What you see | What to do |
+|---|---|
+| Google: "Access blocked … can only be accessed by developer-approved testers" | Add the exact account you sign in with under **Audience → Test users**, or press **Publish app** |
+| "The Gmail API is not enabled …" | **APIs & Services → Library → Gmail API → Enable**, in the same project as the OAuth client |
+| "Google didn't grant permission to manage the mailbox" | Connect again and tick the Gmail box on Google's consent screen |
+| "Checking the inbox in the background" | Normal for the first check of a busy inbox: each new email gets two AI calls. Refresh after a minute |
+| Anything else | The dashboard shows the reason; Render's **Logs** tab has the full error |
+
 ## Checking the connection
 
 ```bash

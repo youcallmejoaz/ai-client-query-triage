@@ -203,6 +203,96 @@ def test_revoked_access_during_a_poll_disconnects_cleanly(
     assert svc.mail is None
 
 
+def gmail_http_error(status: int, message: str, reason: str = "") -> Exception:
+    import httplib2
+    from googleapiclient.errors import HttpError
+
+    body = {"error": {"code": status, "message": message, "errors": [{"reason": reason, "message": message}]}}
+    return HttpError(httplib2.Response({"status": status}), json.dumps(body).encode())
+
+
+def test_mailbox_errors_are_explained() -> None:
+    disabled = gmail_http_error(
+        403, "Gmail API has not been used in project 123 before or it is disabled.", "accessNotConfigured"
+    )
+    assert "Gmail API is not enabled" in connections.describe_mail_error(disabled)
+    scope = gmail_http_error(
+        403, "Request had insufficient authentication scopes.", "insufficientPermissions"
+    )
+    assert "tick the box" in connections.describe_mail_error(scope)
+    assert "rate limit" in connections.describe_mail_error(gmail_http_error(429, "Too many requests"))
+    assert "HTTP 500: Backend Error" in connections.describe_mail_error(
+        gmail_http_error(500, "Backend Error")
+    )
+    assert connections.is_auth_failure(gmail_http_error(401, "Invalid Credentials"))
+    assert not connections.is_auth_failure(disabled)
+
+
+def test_a_failing_inbox_check_is_shown_not_a_server_error(
+    tmp_path: Path, fake_google: dict[str, Any]
+) -> None:
+    class Broken(FakeGmail):
+        def list_new(self, since: Any, limit: int) -> list[Any]:
+            raise gmail_http_error(
+                403, "Gmail API has not been used in project 123 before or it is disabled."
+            )
+
+    svc = services(gmail_settings(tmp_path))
+    svc.mail, svc.mail_error = Broken("joel@example.com"), None
+    client = TestClient(create_app(svc.settings, svc), base_url="https://testserver")
+    polled = client.post("/poll", data={"csrf": csrf_token(svc.settings)}, follow_redirects=False)
+    assert polled.status_code == 303 and "Gmail+API+is+not+enabled" in polled.headers["location"]
+    assert svc.mail is not None  # still connected: the problem is elsewhere
+    assert "Gmail API is not enabled" in client.get("/").text  # and it stays visible on the queue
+    assert client.post("/api/poll").status_code == 409
+
+    from triage.scheduler import run_poll
+
+    run_poll(svc)  # the background job records it too
+    assert svc.last_poll is not None and not svc.last_poll[2]
+
+
+def test_a_long_inbox_check_continues_in_the_background(
+    tmp_path: Path, fake_google: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import threading
+
+    from triage.web import app as web
+
+    release = threading.Event()
+
+    class Slow(FakeGmail):
+        def list_new(self, since: Any, limit: int) -> list[Any]:
+            release.wait(5)
+            return []
+
+    monkeypatch.setattr(web, "POLL_WAIT_SECONDS", 0.05)
+    svc = services(gmail_settings(tmp_path))
+    svc.mail = Slow("joel@example.com")
+    client = TestClient(create_app(svc.settings, svc), base_url="https://testserver")
+    polled = client.post("/poll", data={"csrf": csrf_token(svc.settings)}, follow_redirects=False)
+    assert "in+the+background" in polled.headers["location"]
+    release.set()
+
+
+def test_consent_without_the_gmail_permission_is_refused(
+    tmp_path: Path, fake_google: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class Partial(FakeCredentials):
+        granted_scopes = ("openid",)
+
+    monkeypatch.setattr(connections, "exchange_code", lambda s, code, state, verifier: Partial())
+    svc = services(gmail_settings(tmp_path))
+    client = TestClient(create_app(svc.settings, svc), base_url="https://testserver")
+    start = client.post(
+        "/oauth/google/start", data={"csrf": csrf_token(svc.settings)}, follow_redirects=False
+    )
+    state = parse_qs(urlparse(start.headers["location"]).query)["state"][0]
+    done = client.get(f"/oauth/google/callback?state={state}&code=auth-code", follow_redirects=False)
+    assert "tick+the+box" in done.headers["location"]
+    assert svc.mail is None
+
+
 def test_storage_status_on_render(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     settings = make_settings(tmp_path)
     assert connections.storage_status(settings)[0] == "local"

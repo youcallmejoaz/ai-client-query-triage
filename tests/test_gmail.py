@@ -77,6 +77,7 @@ class FakeGmail:
         self.draft_store: dict[str, dict[str, Any]] = {}
         self.calls: list[tuple[str, dict[str, Any]]] = []
         self.reject_colors = False
+        self.broken: set[str] = set()  # message ids whose get fails
 
     def add(self, message: dict[str, Any]) -> None:
         self.msgs[message["id"]] = message
@@ -118,6 +119,8 @@ class FakeGmail:
                 def run() -> dict[str, Any]:
                     if id not in fake.msgs:
                         raise http_error(404)
+                    if id in fake.broken:
+                        raise http_error(500)
                     return fake.msgs[id]
 
                 return Req(run)
@@ -252,6 +255,14 @@ def test_list_new_parses_messages_and_thread_context(fake: FakeGmail) -> None:
     assert m2.body_text == "Out of office until Monday"
     assert m2.headers == {"auto-submitted": "auto-replied"}
     assert f"-label:{search_label(TRIAGED)}" in fake.calls[0][1]["q"]
+
+
+def test_one_unreadable_message_does_not_stop_the_rest(fake: FakeGmail) -> None:
+    fake.broken = {"m1"}
+    assert [e.provider_id for e in mailbox(fake).list_new(T0 - timedelta(days=3), 50)] == ["m2"]
+    fake.broken = {"m1", "m2"}  # nothing readable: the error is reported, not hidden
+    with pytest.raises(HttpError):
+        mailbox(fake).list_new(T0 - timedelta(days=3), 50)
 
 
 def test_already_triaged_messages_are_skipped(fake: FakeGmail) -> None:

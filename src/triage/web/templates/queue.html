@@ -23,7 +23,8 @@
   </div>
 </div>
 
-{% if flash %}<div class="flash" role="status">{{ icon('check-circle', 16) }} {{ flash }}</div>{% endif %}
+{% if flash %}<div class="flash" role="status">{{ icon('check-circle', 16) }} {{ flash }}</div>
+{% elif last_poll and not last_poll[2] and not mail_error %}<div class="banner" role="alert">{{ icon('alert', 16) }}<span>Last inbox check ({{ last_poll[0] | local('%H:%M') }}): {{ last_poll[1] }}</span></div>{% endif %}
 
 <section class="stats" aria-label="Open queries at a glance">
   <div class="stat"><div class="label">Open</div><div class="value">{{ stats.open }}</div></div>

@@ -9,9 +9,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from .connections import is_auth_failure
 from .digest import build_digest, digest_message
-from .pipeline import Services, mark_disconnected, process_inbox
+from .pipeline import Services, poll_safely
 
 log = logging.getLogger(__name__)
 
@@ -19,16 +18,9 @@ log = logging.getLogger(__name__)
 def run_poll(svc: Services) -> None:
     if svc.mail is None:  # not connected yet: the job starts working as soon as it is
         return
-    try:
-        report = process_inbox(svc)
-        if report.processed or report.closed_by_reply:
-            log.info("Poll: %s", report.as_dict())
-    except Exception as exc:
-        if is_auth_failure(exc):
-            mark_disconnected(svc)
-            log.warning("Mailbox access stopped working: %s", exc)
-        else:
-            log.exception("Scheduled poll failed")
+    report, _ = poll_safely(svc)  # logs and records failures itself
+    if report is not None and (report.processed or report.closed_by_reply):
+        log.info("Poll: %s", report.as_dict())
 
 
 def run_digest(svc: Services) -> None:

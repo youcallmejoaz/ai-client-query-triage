@@ -167,7 +167,19 @@ class GmailMailbox:
             token = response.get("nextPageToken")
             if not token:
                 break
-        emails = [e for e in (self.get(message_id) for message_id in ids[:limit]) if e is not None]
+        emails: list[InboundEmail] = []
+        failures: list[Exception] = []
+        for message_id in ids[:limit]:
+            try:
+                email = self.get(message_id)
+            except Exception as exc:  # one unreadable message shouldn't stop the others
+                log.warning("Skipping Gmail message %s: %s", message_id, exc)
+                failures.append(exc)
+                continue
+            if email is not None:
+                emails.append(email)
+        if failures and not emails:  # nothing readable: the problem isn't the messages, say what it is
+            raise failures[0]
         return sorted((e for e in emails if TRIAGED not in e.provider_labels), key=lambda e: e.received_at)
 
     def get(self, message_id: str) -> InboundEmail | None:

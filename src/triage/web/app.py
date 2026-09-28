@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import secrets
+import threading
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -34,7 +35,7 @@ from ..config import Settings, get_settings
 from ..digest import build_digest, digest_message
 from ..mail.demo import DemoMailbox
 from ..models import CATEGORIES, CATEGORY_LABELS, OPEN_STATUSES, URGENCIES
-from ..pipeline import PollReport, Services, mark_disconnected, process_inbox, regenerate_draft, triage_email
+from ..pipeline import PollReport, Services, poll_safely, regenerate_draft, triage_email
 from ..store import (
     audit,
     audit_for,
@@ -53,6 +54,7 @@ from .api_models import TriageRequest, TriageResponse, triage_response
 log = logging.getLogger(__name__)
 
 HERE = Path(__file__).parent
+POLL_WAIT_SECONDS = 20.0
 CLOSED_STATUSES = ("replied", "resolved", "no_reply_needed", "superseded")
 STATUS_LABELS = {
     "draft_ready": "Draft ready",
@@ -162,25 +164,6 @@ def due_info(q: dict[str, Any], now: datetime) -> dict[str, str]:
     return {"text": f"in {humanize_delta(delta)}", "tone": tone}
 
 
-def poll_message(report: PollReport) -> str:
-    if report.fetched == 0:
-        return "Checked the inbox: nothing new."
-    parts = [f"{report.processed} new"]
-    for count, label in (
-        (report.drafts, "drafted"),
-        (report.needs_human, "need a person"),
-        (report.excluded, "confidential"),
-        (report.no_reply, "need no reply"),
-        (report.replied, "already answered"),
-        (report.errors, "will be retried"),
-    ):
-        if count:
-            parts.append(f"{count} {label}")
-    if report.closed_by_reply:
-        parts.append(f"{report.closed_by_reply} closed because someone replied")
-    return "Checked the inbox: " + ", ".join(parts) + "."
-
-
 # ------------------------------------------------------------------ app
 
 
@@ -260,6 +243,7 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
             "mail_provider": svc.mail.name if svc.mail else settings.mail_provider,
             "mailbox_address": svc.mail.mailbox_address if svc.mail else None,
             "mail_error": svc.mail_error,
+            "last_poll": svc.last_poll,
             "storage_warning": storage_detail if storage_kind == "ephemeral" else None,
             "demo": svc.mail is not None and svc.mail.name == "demo",
             "path": request.url.path,
@@ -315,22 +299,25 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
         )
 
     def poll_now() -> tuple[PollReport | None, str]:
-        """Run a poll; if the mailbox isn't usable, say why instead of failing."""
-        if svc.mail is None:
-            return None, svc.mail_error or "No mailbox is connected."
-        try:
-            report = process_inbox(svc)
-        except Exception as exc:
-            if not connections.is_auth_failure(exc):
-                raise
-            mark_disconnected(svc)
-            return None, svc.mail_error or str(exc)
-        return report, poll_message(report)
+        return poll_safely(svc)
 
     @app.post("/poll")
     def poll(request: Request, csrf: str = Form("")) -> RedirectResponse:
         check_csrf(settings, csrf)
-        _, message = poll_now()
+        # A first check of a busy inbox can take minutes (every new email gets two AI calls), so wait a
+        # little for the result and otherwise let it finish in the background.
+        result: list[str] = []
+        worker = threading.Thread(target=lambda: result.append(poll_now()[1]), name="poll", daemon=True)
+        worker.start()
+        worker.join(POLL_WAIT_SECONDS)
+        message = (
+            result[0]
+            if result
+            else (
+                "Checking the inbox in the background. New queries appear here as they are triaged: "
+                "refresh the page in a minute or two."
+            )
+        )
         return RedirectResponse("/?" + urlencode({"flash": message}), status_code=303)
 
     # ------------------------------------------------------------------ settings and Connect Gmail
@@ -397,6 +384,11 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
             return done("The sign-in link expired or didn't match. Press Connect Gmail again.")
         try:
             credentials = connections.exchange_code(settings, code, state, saved["verifier"])
+            if connections.missing_scopes(credentials):
+                return done(
+                    "Google didn't grant permission to manage the mailbox. Press Connect Gmail again and "
+                    "tick the box to read, compose and delete Gmail messages."
+                )
             account = connections.gmail_address(credentials)
         except Exception as exc:
             log.warning("Google sign-in failed: %s", exc)

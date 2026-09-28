@@ -83,6 +83,8 @@ class Services:
     clock: Callable[[], datetime] = utcnow
     # Why there is no mailbox (not connected yet, access revoked); shown in the dashboard.
     mail_error: str | None = None
+    # The outcome of the latest inbox check (when, what happened, whether it worked), for the dashboard.
+    last_poll: tuple[datetime, str, bool] | None = None
 
 
 @dataclass
@@ -112,9 +114,30 @@ class PollReport:
     errors: int = 0
     replied: int = 0
     closed_by_reply: int = 0
+    busy: bool = False  # another check was already running
 
     def as_dict(self) -> dict[str, int]:
         return dict(self.__dict__)
+
+    def message(self) -> str:
+        if self.busy:
+            return "An inbox check is already running. New queries appear here as they are triaged."
+        if self.fetched == 0:
+            return "Checked the inbox: nothing new."
+        parts = [f"{self.processed} new"]
+        for count, text in (
+            (self.drafts, "drafted"),
+            (self.needs_human, "need a person"),
+            (self.excluded, "confidential"),
+            (self.no_reply, "need no reply"),
+            (self.replied, "already answered"),
+            (self.errors, "will be retried"),
+        ):
+            if count:
+                parts.append(f"{count} {text}")
+        if self.closed_by_reply:
+            parts.append(f"{self.closed_by_reply} closed because someone replied")
+        return "Checked the inbox: " + ", ".join(parts) + "."
 
 
 # ------------------------------------------------------------------ helpers
@@ -641,6 +664,7 @@ def process_inbox(svc: Services) -> PollReport:
     report = PollReport()
     if not _poll_lock.acquire(blocking=False):
         log.info("A poll is already running; skipping this one")
+        report.busy = True
         return report
     try:
         mail = svc.mail
@@ -679,6 +703,29 @@ def process_inbox(svc: Services) -> PollReport:
     finally:
         _poll_lock.release()
     return report
+
+
+def poll_safely(svc: Services) -> tuple[PollReport | None, str]:
+    """Check the inbox and say what happened. Never raises: used by the dashboard and the scheduler."""
+    from .connections import describe_mail_error, is_auth_failure
+
+    if svc.mail is None:
+        return None, svc.mail_error or "No mailbox is connected."
+    try:
+        report = process_inbox(svc)
+    except Exception as exc:
+        if is_auth_failure(exc):
+            log.warning("Mailbox access stopped working: %s", exc)
+            mark_disconnected(svc)
+            message = svc.mail_error or str(exc)
+        else:
+            log.exception("Checking the inbox failed")
+            message = "Couldn't check the inbox. " + describe_mail_error(exc)
+        svc.last_poll = (svc.clock(), message, False)
+        return None, message
+    message = report.message()
+    svc.last_poll = (svc.clock(), message, True)
+    return report, message
 
 
 def mark_disconnected(svc: Services) -> None:
